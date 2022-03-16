@@ -4,15 +4,15 @@ def run_simulation():
 
     print('Running')
 
-    num_decks = 6  # TODO: get from config
+    game_mgr = GameManager()
 
     shoe = []
-    for i in range(num_decks):
+    for i in range(game_mgr.num_decks):
         deck = GameManager.get_deck()
         for card in deck:
             shoe.append(card)
 
-    print(f'Got shoe of {num_decks} decks, {len(shoe)} cards')
+    print(f'Got shoe of {game_mgr.num_decks} decks, {len(shoe)} cards')
 
 
 

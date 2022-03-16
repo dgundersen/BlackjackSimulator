@@ -1,0 +1,9 @@
+{
+  "name": "Simulation #1",
+  "num_decks": 2,
+  "num_players": 1,
+  "max_session_hands": 100,
+  "min_bet": 15,
+  "buyin_num_bets": 20,
+  "strategy_config_file": "blackjack_sim/basic_strategy.json"
+}
