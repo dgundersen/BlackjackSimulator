@@ -18,7 +18,7 @@ class SimulationManager(object):
                 self.simulations.append(Simulation(sim_config, strategy_config))
             else:
                 # TODO: throw ex
-                print('ERROR: no strategy config file')
+                print('ERROR: No strategy config file')
 
         print(f'Loaded {len(self.simulations)} simulations')
 
@@ -33,6 +33,45 @@ class SimulationManager(object):
         for sim in self.simulations:
             sim.run()
 
+class Strategy(object):
+
+    def __init__(self, strategy_config):
+        self.hard_totals = {}  # dict; key=total, val=action
+        self.soft_hands = {}  # dict; key=hand, val=action
+        self.pairs = {}  # dict; key=hand, val=action
+
+        if 'hard_totals' in strategy_config and strategy_config['hard_totals']:
+            for key, value in strategy_config['hard_totals'].items():
+                if len(value) != 10:
+                    print(f'ERROR: Invalid # of actions in hard_totals for: {key}')
+                else:
+                    hand_total = int(key)
+                    self.hard_totals[hand_total] = value
+        else:
+            # TODO: throw ex
+            print('ERROR: Missing hard_totals in strategy config')
+
+        if 'soft_hands' in strategy_config and strategy_config['soft_hands']:
+            for key, value in strategy_config['soft_hands'].items():
+                if len(value) != 10:
+                    print(f'ERROR: Invalid # of actions in soft_hands for: {key}')
+                else:
+                    self.soft_hands[key] = value
+        else:
+            # TODO: throw ex
+            print('ERROR: Missing soft_hands in strategy config')
+
+        if 'pairs' in strategy_config and strategy_config['pairs']:
+            for key, value in strategy_config['pairs'].items():
+                if len(value) != 10:
+                    print(f'ERROR: Invalid # of actions in pairs for: {key}')
+                else:
+                    self.pairs[key] = value
+        else:
+            # TODO: throw ex
+            print('ERROR: Missing pairs in strategy config')
+
+
 class Simulation(object):
 
     SHOE_CUTOFF = 30  # if there are fewer than this many cards left then we get a new shoe
@@ -46,7 +85,7 @@ class Simulation(object):
         self.min_bet = sim_config['min_bet']
         self.buyin_num_bets = sim_config['buyin_num_bets']
 
-        self.strategy_config = strategy_config
+        self.strategy = Strategy(strategy_config)
 
         self.shoe = []
         self.players = []
@@ -88,10 +127,10 @@ class Simulation(object):
             print(f'New shoe of {self.num_decks} decks, {len(self.shoe)} cards; burn card: {burn_card}')
 
         # Reset hands
-        self.dealer = BlackjackHand()
+        self.dealer = BlackjackHand(dealer_hand=True)
         self.players = []
         for p in range(self.num_players):
-            self.players.append(BlackjackHand())
+            self.players.append(BlackjackHand(dealer_hand=False))
 
         # Deal 2 rounds of cards
         self.deal_round_of_cards()
@@ -103,15 +142,19 @@ class Simulation(object):
 
         dealer_up_card = self.dealer.cards[0]
 
+        # Pay 3 card bonus
+
+        # Check if dealer has blackjack
+
         # Play each player's hand
         for player in self.players:
-            pass
-            # TODO: get action based on cards and dealer's up card
+            self.determine_player_action(dealer_up_card=dealer_up_card, player_hand=player)
 
         # Play dealer's hand
 
         # Evaluate each player's hand
 
+        # Pay bust bonus
 
     def deal_round_of_cards(self):
         # Deal to players
@@ -121,6 +164,29 @@ class Simulation(object):
         # Dealer takes card
         self.dealer.add_card(self.get_next_card())
 
+    def determine_player_action(self, dealer_up_card, player_hand):
+        num_cards = len(player_hand.cards)
+        hand_cards = player_hand.get_hand_as_ranks()
+        dealer_up_card_idx = Card.get_dealer_up_card_index(dealer_up_card)
+
+        action = None
+        if num_cards == 2:
+            if player_hand.is_blackjack:
+                action = 'S'
+            elif hand_cards in self.strategy.soft_hands.keys():
+                action = self.strategy.soft_hands[hand_cards][dealer_up_card_idx]
+            elif hand_cards in self.strategy.pairs.keys():
+                action = self.strategy.pairs[hand_cards][dealer_up_card_idx]
+            elif player_hand.hard_value in self.strategy.hard_totals.keys():
+                action = self.strategy.hard_totals[player_hand.hard_value][dealer_up_card_idx]
+
+        if not action:
+            # TODO: throw ex
+            print(f'ERROR: Unable to determine player action for hand: {hand_cards}')
+        else:
+            print(f'Player: {hand_cards}, Dealer: {dealer_up_card.rank}, Action: {action}')
+
+        return action
 
 
 # TODO: do we need this as a class?
