@@ -1,20 +1,12 @@
-from blackjack_sim.game_manager import GameManager
+from blackjack_sim.simulation import SimulationManager
 
 def run_simulation():
 
-    print('Running')
+    print('Running BlackjackSimulator')
 
-    game_mgr = GameManager()
+    sim_mgr = SimulationManager()
 
-    shoe = []
-    for i in range(game_mgr.num_decks):
-        deck = GameManager.get_deck()
-        for card in deck:
-            shoe.append(card)
-
-    print(f'Got shoe of {game_mgr.num_decks} decks, {len(shoe)} cards')
-
-
+    sim_mgr.run_simulations()
 
 
 if __name__ == '__main__':

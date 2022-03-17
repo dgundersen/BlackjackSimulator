@@ -1,9 +1,22 @@
-{
-  "name": "Simulation #1",
-  "num_decks": 2,
-  "num_players": 1,
-  "max_session_hands": 100,
-  "min_bet": 15,
-  "buyin_num_bets": 20,
-  "strategy_config_file": "blackjack_sim/basic_strategy.json"
-}
+[
+  {
+    "name": "Simulation #1 - Two Decks",
+    "num_decks": 2,
+    "num_players": 3,
+    "num_sessions": 1,
+    "max_session_hands": 100,
+    "min_bet": 15,
+    "buyin_num_bets": 20,
+    "strategy_config_file": "blackjack_sim/basic_strategy.json"
+  },
+  {
+    "name": "Simulation #2 - Six Decks",
+    "num_decks": 6,
+    "num_players": 3,
+    "num_sessions": 1,
+    "max_session_hands": 100,
+    "min_bet": 15,
+    "buyin_num_bets": 20,
+    "strategy_config_file": "blackjack_sim/basic_strategy.json"
+  }
+]
