@@ -1,4 +1,6 @@
-
+import logging
+from enum import Enum
+from blackjack_sim.utils import Utils
 
 
 class Card(object):
@@ -42,6 +44,12 @@ class Deck(object):
             for rank in Card.CARD_RANKS:
                 self.cards.append(Card(suit, rank))
 
+class BlackjackHandResult(Enum):
+    UNDETERMINED = 0,
+    LOSS = 1,
+    PUSH = 2,
+    WIN = 3
+
 class BlackjackHand(object):
 
     def __init__(self, dealer_hand):
@@ -51,13 +59,19 @@ class BlackjackHand(object):
         self.contains_ace = False
         self.is_blackjack = False
         self.is_dealer_hand = dealer_hand
-        self.player_won = False
+        self.result = BlackjackHandResult.UNDETERMINED
+
+        self.log = Utils.get_logger(f'BlackjackHand', logging.INFO)
+
+        self.bet = 0
+
+        self.linked_hand = None     # Splitting adds a new hand here
 
     def __str__(self):
         hand_str = ''
         for card in self.cards:
             hand_str += card.__str__()
-        return f'{hand_str} H={self.hard_value}, S={self.soft_value}'
+        return f'{hand_str} ({self.hard_value}/{self.soft_value})'
 
     def get_hand_as_ranks(self):
         # Sort by the order in CARD_RANKS. This only really matters for looking up soft hands.
@@ -68,8 +82,13 @@ class BlackjackHand(object):
         return hand_str
 
     def add_card(self, card):
-        self.cards.append(card)
-        self.calculate_value()
+        if self.hard_value >= 21:
+            self.log.error(f'ERROR: Tried to add card to hand with hard value of {self.hard_value}')
+            # TODO: throw ex
+
+        else:
+            self.cards.append(card)
+            self.calculate_value()
 
     def calculate_value(self):
         self.hard_value = 0
@@ -86,6 +105,27 @@ class BlackjackHand(object):
 
         self.is_blackjack = len(self.cards) == 2 and self.soft_value == 21
 
+    # Returns the better of the soft and hard values
+    def get_ultimate_value(self):
+        if self.soft_value:
+            return max(self.soft_value, self.hard_value)
+        else:
+            return self.hard_value
 
+    def split_hand(self):
+        if self.is_dealer_hand:
+            self.log.error('ERROR: Tried to split dealer hand')
+            # TODO: throw ex
+
+        if len(self.cards) != 2:
+            self.log.error(f'ERROR: Can\'t split hand with {len(self.cards)} cards')
+            # TODO: throw ex
+
+        if self.cards[0].rank != self.cards[1].rank:
+            self.log.error('ERROR: Tried to split hand with unmatched cards')
+            # TODO: throw ex
+
+        self.linked_hand = BlackjackHand(dealer_hand=False)
+        self.linked_hand.add_card(self.cards.pop())
 
 

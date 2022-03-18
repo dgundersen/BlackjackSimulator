@@ -1,7 +1,7 @@
 import json
 import logging
 from random import randint
-from blackjack_sim.game_models import Card, Deck, BlackjackHand
+from blackjack_sim.game_models import Card, Deck, BlackjackHand, BlackjackHandResult
 from blackjack_sim.utils import Utils
 
 
@@ -97,6 +97,7 @@ class Simulation(object):
         self.shoe = []
         self.players = []
         self.dealer = None
+        self.num_hands = 0
 
         log_level = logging.DEBUG if self.verbose else logging.INFO
 
@@ -129,8 +130,30 @@ class Simulation(object):
         return self.shoe.pop(0)
 
     def run(self):
-        self.log.info(f'Running: {self.name}')
+        self.log.info(f'\nRunning: {self.name}')
 
+        # TODO: get from sim config
+        for i in range(3):
+            self.play_round()
+
+    def log_all_hands(self):
+        self.log.debug('')
+        self.log_hand(self.dealer, True)
+        for player in self.players:
+            self.log_hand(player, False)
+
+    def log_hand(self, bj_hand, is_dealer):
+        hand_type_str = 'Dealer' if is_dealer else 'Player'
+        self.log.debug(f'{hand_type_str}: {bj_hand} - {bj_hand.result}')
+        if bj_hand.linked_hand:
+            self.log_hand(bj_hand.linked_hand, is_dealer)
+
+    def play_round(self):
+        self.num_hands += 1
+
+        self.log.debug(f'Hand #{self.num_hands}')
+
+        # Check if we need a new shoe
         if len(self.shoe) < self.SHOE_CUTOFF:
             self.shoe = self.get_shoe()
             burn_card = self.get_next_card()
@@ -147,25 +170,36 @@ class Simulation(object):
         self.deal_round_of_cards()
         self.deal_round_of_cards()
 
-        self.log.debug(f'Dealer: {self.dealer}')
-        for player in self.players:
-            self.log.debug(f'Player: {player}')
+        self.log_all_hands()
 
         dealer_up_card = self.dealer.cards[0]
 
         # Pay 3 card bonus
 
         # Check if dealer has blackjack
+        if self.dealer.is_blackjack:
+            for player in self.players:
+                if player.is_blackjack:
+                    player.result = BlackjackHandResult.PUSH
+                else:
+                    player.result = BlackjackHandResult.LOSS
 
-        # Play each player's hand
-        for player in self.players:
-            self.determine_player_action(dealer_up_card=dealer_up_card, player_hand=player)
+        else:
+            # Play each player's hand
+            for player in self.players:
+                self.play_player_hand(dealer_up_card=dealer_up_card, player_hand=player)
 
-        # Play dealer's hand
+            # Play dealer's hand
+            self.play_dealer_hand()
 
-        # Evaluate each player's hand
+            # Evaluate each player's hand
+            for player in self.players:
+                self.evaluate_hand_result(player)
+
+        self.log_all_hands()
 
         # Pay bust bonus
+
 
     def deal_round_of_cards(self):
         # Deal to players
@@ -175,12 +209,65 @@ class Simulation(object):
         # Dealer takes card
         self.dealer.add_card(self.get_next_card())
 
+    def play_dealer_hand(self):
+        action = self.determine_dealer_action()
+
+        self.log.debug(f'Playing dealer hand {self.dealer}, Action: {action}')
+
+        # stand
+        if action == 'S':
+            return
+
+        # hit
+        elif action == 'H':
+            self.dealer.add_card(self.get_next_card())
+            self.play_dealer_hand()
+
+    def determine_dealer_action(self):
+        if self.dealer.soft_value and self.dealer.soft_value > 17:
+            return 'S'
+        elif self.dealer.hard_value >= 17:
+            return 'S'
+        else:
+            return 'H'
+
+    def play_player_hand(self, dealer_up_card, player_hand):
+        action = self.determine_player_action(dealer_up_card=dealer_up_card, player_hand=player_hand)
+
+        self.log.debug(f'Playing player hand {player_hand}, Action: {action}')
+
+        # stand
+        if action == 'S':
+            return
+
+        # hit
+        elif action == 'H':
+            player_hand.add_card(self.get_next_card())
+
+            # Check if we busted
+            if player_hand.hard_value > 21:
+                player_hand.result = BlackjackHandResult.LOSS
+
+            self.play_player_hand(dealer_up_card=dealer_up_card, player_hand=player_hand)
+
+        # double
+        elif action == 'D':
+            # TODO: double bet
+            player_hand.add_card(self.get_next_card())
+
+        # split
+        elif action == 'SP':
+            player_hand.split_hand()
+            self.play_player_hand(dealer_up_card=dealer_up_card, player_hand=player_hand)
+            self.play_player_hand(dealer_up_card=dealer_up_card, player_hand=player_hand.linked_hand)
+
     def determine_player_action(self, dealer_up_card, player_hand):
         num_cards = len(player_hand.cards)
         hand_cards = player_hand.get_hand_as_ranks()
         dealer_up_card_idx = Card.get_dealer_up_card_index(dealer_up_card)
 
         action = None
+        # Determine the player's first action for the hand
         if num_cards == 2:
             if player_hand.is_blackjack:
                 action = 'S'
@@ -191,18 +278,45 @@ class Simulation(object):
             elif player_hand.hard_value in self.strategy.hard_totals.keys():
                 action = self.strategy.hard_totals[player_hand.hard_value][dealer_up_card_idx]
 
+        # Determine the player's action after initially hitting
+        # Follow hard totals strategy and either hit or stand
+        elif num_cards > 2:
+            if player_hand.hard_value in self.strategy.hard_totals.keys():
+                action = self.strategy.hard_totals[player_hand.hard_value][dealer_up_card_idx]
+
+                if action == 'D':
+                    action = 'H'
+
+        # There will only be 1 card if we just split
+        elif num_cards == 1:
+            return 'H'
+
+        # Return action of stand if we're at 21 or busted
+        if player_hand.hard_value >= 21:
+            action = 'S'
+
         if not action:
             # TODO: throw ex
             self.log.error(f'ERROR: Unable to determine player action for hand: {hand_cards}')
-        else:
-            self.log.debug(f'Player: {hand_cards}, Dealer: {dealer_up_card.rank}, Action: {action}')
 
         return action
 
+    def evaluate_hand_result(self, player_hand):
+        if player_hand.result == BlackjackHandResult.UNDETERMINED:
+            player_hand_value = player_hand.get_ultimate_value()
+            dealer_hand_value = self.dealer.get_ultimate_value()
 
-# TODO: do we need this as a class?
-class RoundOfPlay(object):
+            if self.dealer.hard_value > 21:
+                player_hand.result = BlackjackHandResult.WIN
+            elif player_hand.is_blackjack:
+                player_hand.result = BlackjackHandResult.WIN
+            elif player_hand_value > dealer_hand_value:
+                player_hand.result = BlackjackHandResult.WIN
+            elif player_hand_value == dealer_hand_value:
+                player_hand.result = BlackjackHandResult.PUSH
+            elif player_hand_value < dealer_hand_value:
+                player_hand.result = BlackjackHandResult.LOSS
 
-    def __init__(self):
-        pass
+        if player_hand.linked_hand:
+            self.evaluate_hand_result(player_hand.linked_hand)
 
