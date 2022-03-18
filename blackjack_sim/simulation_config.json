@@ -7,7 +7,8 @@
     "max_session_hands": 100,
     "min_bet": 15,
     "buyin_num_bets": 20,
-    "strategy_config_file": "blackjack_sim/basic_strategy.json"
+    "strategy_config_file": "blackjack_sim/basic_strategy.json",
+    "verbose": 1
   },
   {
     "name": "Simulation #2 - Six Decks",
@@ -17,6 +18,7 @@
     "max_session_hands": 100,
     "min_bet": 15,
     "buyin_num_bets": 20,
-    "strategy_config_file": "blackjack_sim/basic_strategy.json"
+    "strategy_config_file": "blackjack_sim/basic_strategy.json",
+    "verbose": 0
   }
 ]
