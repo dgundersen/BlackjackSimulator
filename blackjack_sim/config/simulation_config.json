@@ -4,10 +4,10 @@
     "num_decks": 2,
     "num_players": 3,
     "num_sessions": 1,
-    "max_session_hands": 100,
+    "max_session_hands": 1,
     "min_bet": 15,
     "buyin_num_bets": 20,
-    "strategy_config_file": "blackjack_sim/basic_strategy.json",
+    "strategy_config_file": "blackjack_sim/config/basic_strategy.json",
     "verbose": 1
   },
   {
@@ -15,10 +15,10 @@
     "num_decks": 6,
     "num_players": 3,
     "num_sessions": 1,
-    "max_session_hands": 100,
+    "max_session_hands": 1,
     "min_bet": 15,
     "buyin_num_bets": 20,
-    "strategy_config_file": "blackjack_sim/basic_strategy.json",
+    "strategy_config_file": "blackjack_sim/config/basic_strategy.json",
     "verbose": 0
   }
 ]

@@ -1,82 +1,53 @@
 import json
 import logging
-from random import randint
-from blackjack_sim.game_models import Card, Deck, BlackjackHand, BlackjackHandResult
+import time
+from blackjack_sim.game_models import *
+from blackjack_sim.strategy import Strategy
+from blackjack_sim.errors import *
 from blackjack_sim.utils import Utils
 
 
 class SimulationManager(object):
 
     def __init__(self):
+        self.simulations = []
+
         self.log = Utils.get_logger('SimulationManager', logging.INFO)
 
         # load main config file; contains 1 or more simulations
-        sim_config_list = self.load_json_file('blackjack_sim/simulation_config.json')
+        sim_config_list = self.load_json_file('blackjack_sim/config/simulation_config.json')
 
-        self.simulations = []
-        for sim_config in sim_config_list:
-            # load strategy config
-            if 'strategy_config_file' in sim_config and sim_config['strategy_config_file']:
-                strategy_config = self.load_json_file(sim_config['strategy_config_file'])
+        if sim_config_list:
+            for sim_config in sim_config_list:
+                # load strategy config
+                if 'strategy_config_file' in sim_config and sim_config['strategy_config_file']:
+                    strategy_config = self.load_json_file(sim_config['strategy_config_file'])
 
-                self.simulations.append(Simulation(len(self.simulations), sim_config, strategy_config))
-            else:
-                # TODO: throw ex
-                self.log.error('ERROR: No strategy config file')
+                    if strategy_config:
+                        self.simulations.append(Simulation(len(self.simulations), sim_config, strategy_config))
+                    else:
+                        self.log.error('ERROR: Unable to load strategy config file')
+                else:
+                    self.log.error('ERROR: No strategy config file')
 
-        self.log.info(f'Loaded {len(self.simulations)} simulations')
+            self.log.info(f'Loaded {len(self.simulations)} simulations')
+        else:
+            self.log.error('ERROR: Unable to load simulation config file')
 
-    @staticmethod
-    def load_json_file(file_name_and_path):
-        with open(file_name_and_path, 'r') as f:
-            json_file = json.load(f)
+    def load_json_file(self, file_name_and_path):
+        json_file = None
+
+        try:
+            with open(file_name_and_path, 'r') as f:
+                json_file = json.load(f)
+        except Exception as ex:
+            self.log.error(ex, exc_info=False)
 
         return json_file
 
     def run_simulations(self):
         for sim in self.simulations:
             sim.run()
-
-class Strategy(object):
-
-    def __init__(self, idx, strategy_config):
-        self.log = Utils.get_logger(f'Strategy-{idx}', logging.INFO)
-
-        self.hard_totals = {}  # dict; key=total, val=action
-        self.soft_hands = {}  # dict; key=hand, val=action
-        self.pairs = {}  # dict; key=hand, val=action
-
-        if 'hard_totals' in strategy_config and strategy_config['hard_totals']:
-            for key, value in strategy_config['hard_totals'].items():
-                if len(value) != 10:
-                    self.log.error(f'ERROR: Invalid # of actions in hard_totals for: {key}')
-                else:
-                    hand_total = int(key)
-                    self.hard_totals[hand_total] = value
-        else:
-            # TODO: throw ex
-            self.log.error('ERROR: Missing hard_totals in strategy config')
-
-        if 'soft_hands' in strategy_config and strategy_config['soft_hands']:
-            for key, value in strategy_config['soft_hands'].items():
-                if len(value) != 10:
-                    self.log.error(f'ERROR: Invalid # of actions in soft_hands for: {key}')
-                else:
-                    self.soft_hands[key] = value
-        else:
-            # TODO: throw ex
-            self.log.error('ERROR: Missing soft_hands in strategy config')
-
-        if 'pairs' in strategy_config and strategy_config['pairs']:
-            for key, value in strategy_config['pairs'].items():
-                if len(value) != 10:
-                    self.log.error(f'ERROR: Invalid # of actions in pairs for: {key}')
-                else:
-                    self.pairs[key] = value
-        else:
-            # TODO: throw ex
-            self.log.error('ERROR: Missing pairs in strategy config')
-
 
 class Simulation(object):
 
@@ -103,38 +74,26 @@ class Simulation(object):
 
         self.log = Utils.get_logger(f'Simulation-{idx}', log_level)
 
-    # Returns a shuffled shoe with the # of decks specified in the config file
-    def get_shoe(self):
-        shoe = []
-        for i in range(self.num_decks):
-            deck = Deck()
-            for card in deck.cards:
-                shoe.append(card)
-
-        return self.shuffle(shoe)
-
-    # Fisher-Yates shuffle; implementation taken from here:
-    # https://www.geeksforgeeks.org/shuffle-a-given-array-using-fisher-yates-shuffle-algorithm/
-    @staticmethod
-    def shuffle(arr):
-        n = len(arr)
-        for i in range(n - 1, 0, -1):
-            j = randint(0, i + 1)
-
-            # Swap arr[i] with the element at random index
-            arr[i], arr[j] = arr[j], arr[i]
-
-        return arr
-
     def get_next_card(self):
         return self.shoe.pop(0)
 
     def run(self):
         self.log.info(f'\nRunning: {self.name}')
 
-        # TODO: get from sim config
-        for i in range(3):
-            self.play_round()
+        start_time = time.perf_counter()
+
+        try:
+            for i in range(self.max_session_hands):
+                self.play_round()
+
+            self.log.info(f'DONE - Played {self.num_hands} hands')
+
+        except Exception as ex:
+            self.log.error(ex, exc_info=True)
+
+        end_time = time.perf_counter()
+
+        self.log.info(f"Finished in {end_time - start_time:0.4f} seconds")
 
     def log_all_hands(self):
         self.log.debug('')
@@ -155,7 +114,7 @@ class Simulation(object):
 
         # Check if we need a new shoe
         if len(self.shoe) < self.SHOE_CUTOFF:
-            self.shoe = self.get_shoe()
+            self.shoe = Shoe(self.num_decks).cards
             burn_card = self.get_next_card()
 
             self.log.debug(f'New shoe of {self.num_decks} decks, {len(self.shoe)} cards; burn card: {burn_card}')
@@ -296,8 +255,7 @@ class Simulation(object):
             action = 'S'
 
         if not action:
-            # TODO: throw ex
-            self.log.error(f'ERROR: Unable to determine player action for hand: {hand_cards}')
+            raise DetermineActionError(f'Unable to determine player action for hand: {hand_cards}')
 
         return action
 

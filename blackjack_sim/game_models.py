@@ -1,6 +1,6 @@
-import logging
 from enum import Enum
-from blackjack_sim.utils import Utils
+from random import randint
+from blackjack_sim.errors import *
 
 
 class Card(object):
@@ -44,6 +44,34 @@ class Deck(object):
             for rank in Card.CARD_RANKS:
                 self.cards.append(Card(suit, rank))
 
+class Shoe(object):
+
+    # Inits a shuffled shoe with the given # of decks
+    def __init__(self, num_decks):
+        self.cards = []
+        for i in range(num_decks):
+            deck = Deck()
+            for card in deck.cards:
+                self.cards.append(card)
+
+        self.cards = self.shuffle(self.cards)
+
+    # Fisher-Yates shuffle; implementation taken from here:
+    # https://www.geeksforgeeks.org/shuffle-a-given-array-using-fisher-yates-shuffle-algorithm/
+    @staticmethod
+    def shuffle(arr):
+        n = len(arr)
+        for i in range(n - 1, 0, -1):
+            j = randint(0, i)
+
+            # Swap arr[i] with the element at random index
+            arr[i], arr[j] = arr[j], arr[i]
+
+        return arr
+
+    def print_shoe(self):
+        print(' '.join(c.rank for c in self.cards))
+
 class BlackjackHandResult(Enum):
     UNDETERMINED = 0,
     LOSS = 1,
@@ -60,8 +88,6 @@ class BlackjackHand(object):
         self.is_blackjack = False
         self.is_dealer_hand = dealer_hand
         self.result = BlackjackHandResult.UNDETERMINED
-
-        self.log = Utils.get_logger(f'BlackjackHand', logging.INFO)
 
         self.bet = 0
 
@@ -83,8 +109,7 @@ class BlackjackHand(object):
 
     def add_card(self, card):
         if self.hard_value >= 21:
-            self.log.error(f'ERROR: Tried to add card to hand with hard value of {self.hard_value}')
-            # TODO: throw ex
+            raise GameplayError(f'Tried to add card to hand with hard value of {self.hard_value}')
 
         else:
             self.cards.append(card)
@@ -114,16 +139,13 @@ class BlackjackHand(object):
 
     def split_hand(self):
         if self.is_dealer_hand:
-            self.log.error('ERROR: Tried to split dealer hand')
-            # TODO: throw ex
+            raise GameplayError('Tried to split dealer hand')
 
         if len(self.cards) != 2:
-            self.log.error(f'ERROR: Can\'t split hand with {len(self.cards)} cards')
-            # TODO: throw ex
+            raise GameplayError(f'Can\'t split hand with {len(self.cards)} cards')
 
         if self.cards[0].rank != self.cards[1].rank:
-            self.log.error('ERROR: Tried to split hand with unmatched cards')
-            # TODO: throw ex
+            raise GameplayError('Tried to split hand with unmatched cards')
 
         self.linked_hand = BlackjackHand(dealer_hand=False)
         self.linked_hand.add_card(self.cards.pop())

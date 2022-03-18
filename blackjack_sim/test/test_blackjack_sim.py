@@ -140,7 +140,7 @@ class TestSimulation(unittest.TestCase):
             assert action == sc[3]
 
 
-    # Verify that we're playing this hand correctly: AA2
+    # TODO: Verify that we're playing this hand correctly: AA2
 
 
 if __name__ == '__main__':
