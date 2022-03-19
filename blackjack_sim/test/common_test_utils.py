@@ -1,8 +1,8 @@
 import functools
 
 
+# Decorates a test case to run it as a set of subtests.
 def sub_test(param_list):
-    """Decorates a test case to run it as a set of subtests."""
 
     def decorator(f):
         @functools.wraps(f)

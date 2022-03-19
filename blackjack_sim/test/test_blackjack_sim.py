@@ -159,6 +159,7 @@ class TestSimulation(unittest.TestCase):
     # Verify that we're playing these trickier hands correctly
     @sub_test([
         dict(player_hand_str='A2A'),
+        dict(player_hand_str='2AA'),
         dict(player_hand_str='A3A'),
         dict(player_hand_str='A4A')
     ])
