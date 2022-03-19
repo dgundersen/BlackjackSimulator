@@ -1,6 +1,8 @@
 import unittest
 from blackjack_sim.simulation import Simulation
 from blackjack_sim.game_models import Card, BlackjackHand
+from common_test_utils import *
+
 
 class TestSimulation(unittest.TestCase):
 
@@ -21,6 +23,7 @@ class TestSimulation(unittest.TestCase):
         "_key": "H = hit, S = stand, D = double, SP = split",
         "_source": "https://blackjack-strategy.co/blackjack-strategy-chart/blackjack-strategy-card-downtown-las-vegas/",
         "hard_totals": {
+            "4": ["H", "H", "H", "H", "H", "H", "H", "H", "H", "H"],
             "5": ["H", "H", "H", "H", "H", "H", "H", "H", "H", "H"],
             "6": ["H", "H", "H", "H", "H", "H", "H", "H", "H", "H"],
             "7": ["H", "H", "H", "H", "H", "H", "H", "H", "H", "H"],
@@ -68,6 +71,24 @@ class TestSimulation(unittest.TestCase):
     def get_simulation(self):
         return Simulation(0, self.simulation_config, self.strategy_config)
 
+    @staticmethod
+    def get_blackjack_hand(ranks_str, suited=False, is_dealer_hand=False):
+
+        hand = BlackjackHand(dealer_hand=is_dealer_hand)
+
+        suit_idx = 0
+        for rank in ranks_str:
+            if suited:
+                suit = 'C'
+            else:
+                suit = Card.CARD_SUITS[suit_idx]
+                suit_idx += 1
+                if suit_idx > 3:
+                    suit_idx = 0
+            hand.add_card(Card(suit, rank))
+
+        return hand
+
     def test_simulation(self):
         sim = self.get_simulation()
 
@@ -80,7 +101,7 @@ class TestSimulation(unittest.TestCase):
         assert sim.buyin_num_bets == 20
 
     # Verify that an action is determined for every possible combination of player hand and dealer up card
-    def test_determine_player_action(self):
+    def test_determine_player_action_all_starting_hands(self):
         sim = self.get_simulation()
 
         for p1 in Card.CARD_RANKS:
@@ -95,52 +116,77 @@ class TestSimulation(unittest.TestCase):
 
                     assert action
 
-    # Spot check some card combos with the expected action
-    def test_determine_player_action_spot_check(self):
+    @sub_test([
+        dict(player_hand_str='AA', dealer_up_card_rank='A', expected_action='SP'),
+        dict(player_hand_str='88', dealer_up_card_rank='K', expected_action='SP'),
+        dict(player_hand_str='TQ', dealer_up_card_rank='K', expected_action='S'),
+        dict(player_hand_str='TQ', dealer_up_card_rank='4', expected_action='S'),
+        dict(player_hand_str='55', dealer_up_card_rank='4', expected_action='D'),
+        dict(player_hand_str='55', dealer_up_card_rank='6', expected_action='D'),
+        dict(player_hand_str='55', dealer_up_card_rank='9', expected_action='D'),
+        dict(player_hand_str='55', dealer_up_card_rank='J', expected_action='H'),
+        dict(player_hand_str='99', dealer_up_card_rank='2', expected_action='SP'),
+        dict(player_hand_str='99', dealer_up_card_rank='7', expected_action='S'),
+        dict(player_hand_str='99', dealer_up_card_rank='9', expected_action='SP'),
+        dict(player_hand_str='85', dealer_up_card_rank='3', expected_action='S'),
+        dict(player_hand_str='85', dealer_up_card_rank='6', expected_action='S'),
+        dict(player_hand_str='85', dealer_up_card_rank='8', expected_action='H'),
+        dict(player_hand_str='65', dealer_up_card_rank='2', expected_action='D'),
+        dict(player_hand_str='65', dealer_up_card_rank='3', expected_action='D'),
+        dict(player_hand_str='65', dealer_up_card_rank='6', expected_action='D'),
+        dict(player_hand_str='65', dealer_up_card_rank='8', expected_action='D'),
+        dict(player_hand_str='65', dealer_up_card_rank='Q', expected_action='D'),
+        dict(player_hand_str='65', dealer_up_card_rank='A', expected_action='D'),
+        dict(player_hand_str='A2', dealer_up_card_rank='2', expected_action='H'),
+        dict(player_hand_str='2A', dealer_up_card_rank='6', expected_action='D'),
+        dict(player_hand_str='7A', dealer_up_card_rank='2', expected_action='D'),
+        dict(player_hand_str='7A', dealer_up_card_rank='7', expected_action='S'),
+        dict(player_hand_str='7A', dealer_up_card_rank='9', expected_action='H'),
+        dict(player_hand_str='A9', dealer_up_card_rank='A', expected_action='S'),
+        dict(player_hand_str='A9', dealer_up_card_rank='6', expected_action='S')
+    ])
+    # Check some scenarios for the player action determined
+    def test_determine_player_action(self, player_hand_str, dealer_up_card_rank, expected_action):
         sim = self.get_simulation()
 
-        # dealer up card, player card 1, player card 2, expected action
-        scenarios = [
-            ['A', 'A', 'A', 'SP'],
-            ['K', '8', '8', 'SP'],
-            ['K', 'T', 'Q', 'S'],
-            ['4', 'T', 'Q', 'S'],
-            ['4', '5', '5', 'D'],
-            ['6', '5', '5', 'D'],
-            ['9', '5', '5', 'D'],
-            ['J', '5', '5', 'H'],
-            ['2', '9', '9', 'SP'],
-            ['7', '9', '9', 'S'],
-            ['9', '9', '9', 'SP'],
-            ['3', '8', '5', 'S'],
-            ['6', '8', '5', 'S'],
-            ['8', '8', '5', 'H'],
-            ['2', '6', '5', 'D'],
-            ['3', '6', '5', 'D'],
-            ['6', '6', '5', 'D'],
-            ['8', '6', '5', 'D'],
-            ['Q', '6', '5', 'D'],
-            ['A', '6', '5', 'D'],
-            ['2', 'A', '2', 'H'],
-            ['6', '2', 'A', 'D'],
-            ['2', '7', 'A', 'D'],
-            ['7', '7', 'A', 'S'],
-            ['9', '7', 'A', 'H'],
-            ['A', 'A', '9', 'S'],
-            ['6', 'A', '9', 'S'],
-        ]
+        player_hand = self.get_blackjack_hand(ranks_str=player_hand_str)
+        dealer_up_card = Card('C', dealer_up_card_rank)
 
-        for sc in scenarios:
-            player_hand = BlackjackHand(dealer_hand=False)
-            player_hand.add_card(Card('C', sc[1]))
-            player_hand.add_card(Card('C', sc[2]))
+        action = sim.determine_player_action(dealer_up_card=dealer_up_card, player_hand=player_hand)
 
-            action = sim.determine_player_action(dealer_up_card=Card('C', sc[0]), player_hand=player_hand)
+        assert action == expected_action
 
-            assert action == sc[3]
+    # Verify that we're playing these trickier hands correctly
+    @sub_test([
+        dict(player_hand_str='A2A'),
+        dict(player_hand_str='A3A'),
+        dict(player_hand_str='A4A')
+    ])
+    def test_high_soft_totals(self, player_hand_str):
+        sim = self.get_simulation()
 
+        player_hand = self.get_blackjack_hand(ranks_str=player_hand_str)
+        dealer_up_card = Card('C', 'K')
 
-    # TODO: Verify that we're playing this hand correctly: AA2
+        # A2A - Hit
+        action = sim.determine_player_action(dealer_up_card=dealer_up_card, player_hand=player_hand)
+
+        assert action == 'H'
+
+        player_hand.add_card(Card('C', '2'))
+
+        # A2A2 - Hit
+        action = sim.determine_player_action(dealer_up_card=dealer_up_card, player_hand=player_hand)
+
+        assert action == 'H'
+
+        player_hand.add_card(Card('D', '3'))
+
+        # A2A23 (9/19) - Stand
+        action = sim.determine_player_action(dealer_up_card=dealer_up_card, player_hand=player_hand)
+
+        assert action == 'S'
+
 
 
 if __name__ == '__main__':

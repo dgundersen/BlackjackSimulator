@@ -238,9 +238,12 @@ class Simulation(object):
                 action = self.strategy.hard_totals[player_hand.hard_value][dealer_up_card_idx]
 
         # Determine the player's action after initially hitting
-        # Follow hard totals strategy and either hit or stand
+        # Stand on soft 19 or greater, otherwise follow hard totals strategy and either hit or stand
+        # TODO: do we need to add another strategy config for this?
         elif num_cards > 2:
-            if player_hand.hard_value in self.strategy.hard_totals.keys():
+            if player_hand.soft_value and player_hand.soft_value >= 19:
+                return 'S'
+            elif player_hand.hard_value in self.strategy.hard_totals.keys():
                 action = self.strategy.hard_totals[player_hand.hard_value][dealer_up_card_idx]
 
                 if action == 'D':
