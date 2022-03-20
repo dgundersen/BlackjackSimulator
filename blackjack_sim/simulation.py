@@ -68,12 +68,10 @@ class Simulation(object):
         self.shoe = []
         self.player_hands = []
         self.dealer_hand = None
-
-        self.players = []
-
         self.num_hands_played = 0
+
         self.session_idx = -1
-        self.session_hands_played_list = []
+        self.sessions = []
 
         log_level = logging.DEBUG if self.verbose else logging.INFO
 
@@ -90,12 +88,11 @@ class Simulation(object):
         try:
             for s in range(self.num_sessions):
                 self.session_idx += 1
-                self.session_hands_played_list.append(0)
-
-                # TODO: add a session object to store players
-                self.players = []
-                for p in range(self.num_players):
-                    self.players.append(Player(idx=p, buyin=self.buyin_num_bets * self.min_bet))
+                self.sessions.append(BlackjackSession(
+                    idx=self.session_idx,
+                    num_players=self.num_players,
+                    buyin=self.buyin_num_bets * self.min_bet
+                ))
 
                 for h in range(self.max_session_hands):
                     self.play_round()
@@ -122,20 +119,20 @@ class Simulation(object):
             self.log_hand(bj_hand.linked_hand, is_dealer)
 
     def log_results(self):
-        self.log.info(f'DONE')
+        self.log.info('Results:')
         self.log.info(f'# Simulation hands: {self.num_hands_played}')
         self.log.info(f'# Sessions: {self.num_sessions}')
         self.log.info(f'# Players: {self.num_players}')
 
-        # for s in self.session_hands_played_list:
-        #     self.log.info(f'# Simulation hands: {self.session_hands_played_list[s]}')
+        for session in self.sessions:
+            self.log.info(f'  # Session {session.session_idx} hands: {session.num_hands_played}')
 
-        for p in self.players:
-            self.log.info(f'Player {p.player_idx}: {p.get_gameplay_result_str()}')
+            for p in session.players:
+                self.log.info(f'    Player {p.player_idx}: {p.get_gameplay_result_str()}')
 
     def play_round(self):
         self.num_hands_played += 1
-        self.session_hands_played_list[self.session_idx] += 1
+        self.sessions[self.session_idx].num_hands_played += 1
 
         # Check if we need a new shoe
         if len(self.shoe) < self.SHOE_CUTOFF:
@@ -164,7 +161,7 @@ class Simulation(object):
         if self.dealer_hand.is_blackjack:
             for player_hand in self.player_hands:
                 self.evaluate_hand_result(
-                    player=self.players[player_hand.player_idx],
+                    player=self.sessions[self.session_idx].players[player_hand.player_idx],
                     player_hand=player_hand,
                     dealer_has_bj=True
                 )
@@ -180,7 +177,7 @@ class Simulation(object):
             # Evaluate each player's hand
             for player_hand in self.player_hands:
                 self.evaluate_hand_result(
-                    player=self.players[player_hand.player_idx],
+                    player=self.sessions[self.session_idx].players[player_hand.player_idx],
                     player_hand=player_hand,
                     dealer_has_bj=False
                 )
@@ -237,7 +234,7 @@ class Simulation(object):
             if player_hand.hard_value > 21:
                 player_hand.result = BlackjackHandResult.LOSS
 
-                self.players[player_hand.player_idx].record_hand_result(bj_hand_result=player_hand.result)
+                self.sessions[self.session_idx].players[player_hand.player_idx].record_hand_result(bj_hand_result=player_hand.result)
 
             self.play_player_hand(dealer_up_card=dealer_up_card, player_hand=player_hand)
 

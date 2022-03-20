@@ -151,7 +151,18 @@ class BlackjackHand(object):
         self.linked_hand = BlackjackHand(idx=self.player_idx, dealer_hand=False)
         self.linked_hand.add_card(self.cards.pop())
 
-class Player(object):
+class BlackjackSession(object):
+
+    def __init__(self, idx, num_players, buyin):
+        self.session_idx = idx
+        self.num_hands_played = 0
+        self.num_players = num_players
+
+        self.players = []
+        for p in range(self.num_players):
+            self.players.append(BlackjackPlayer(idx=p, buyin=buyin))
+
+class BlackjackPlayer(object):
 
     def __init__(self, idx, buyin=0):
         self.player_idx = idx
