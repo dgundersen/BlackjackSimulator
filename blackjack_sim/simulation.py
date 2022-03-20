@@ -66,9 +66,14 @@ class Simulation(object):
         self.strategy = Strategy(idx, strategy_config)
 
         self.shoe = []
+        self.player_hands = []
+        self.dealer_hand = None
+
         self.players = []
-        self.dealer = None
-        self.num_hands = 0
+
+        self.num_hands_played = 0
+        self.session_idx = -1
+        self.session_hands_played_list = []
 
         log_level = logging.DEBUG if self.verbose else logging.INFO
 
@@ -83,10 +88,19 @@ class Simulation(object):
         start_time = time.perf_counter()
 
         try:
-            for i in range(self.max_session_hands):
-                self.play_round()
+            for s in range(self.num_sessions):
+                self.session_idx += 1
+                self.session_hands_played_list.append(0)
 
-            self.log.info(f'DONE - Played {self.num_hands} hands')
+                # TODO: add a session object to store players
+                self.players = []
+                for p in range(self.num_players):
+                    self.players.append(Player(idx=p, buyin=self.buyin_num_bets * self.min_bet))
+
+                for h in range(self.max_session_hands):
+                    self.play_round()
+
+            self.log_results()
 
         except Exception as ex:
             self.log.error(ex, exc_info=True)
@@ -97,9 +111,9 @@ class Simulation(object):
 
     def log_all_hands(self):
         self.log.debug('')
-        self.log_hand(self.dealer, True)
-        for player in self.players:
-            self.log_hand(player, False)
+        self.log_hand(self.dealer_hand, True)
+        for player_hand in self.player_hands:
+            self.log_hand(player_hand, False)
 
     def log_hand(self, bj_hand, is_dealer):
         hand_type_str = 'Dealer' if is_dealer else 'Player'
@@ -107,10 +121,21 @@ class Simulation(object):
         if bj_hand.linked_hand:
             self.log_hand(bj_hand.linked_hand, is_dealer)
 
-    def play_round(self):
-        self.num_hands += 1
+    def log_results(self):
+        self.log.info(f'DONE')
+        self.log.info(f'# Simulation hands: {self.num_hands_played}')
+        self.log.info(f'# Sessions: {self.num_sessions}')
+        self.log.info(f'# Players: {self.num_players}')
 
-        self.log.debug(f'Hand #{self.num_hands}')
+        # for s in self.session_hands_played_list:
+        #     self.log.info(f'# Simulation hands: {self.session_hands_played_list[s]}')
+
+        for p in self.players:
+            self.log.info(f'Player {p.player_idx}: {p.get_gameplay_result_str()}')
+
+    def play_round(self):
+        self.num_hands_played += 1
+        self.session_hands_played_list[self.session_idx] += 1
 
         # Check if we need a new shoe
         if len(self.shoe) < self.SHOE_CUTOFF:
@@ -120,10 +145,10 @@ class Simulation(object):
             self.log.debug(f'New shoe of {self.num_decks} decks, {len(self.shoe)} cards; burn card: {burn_card}')
 
         # Reset hands
-        self.dealer = BlackjackHand(dealer_hand=True)
-        self.players = []
+        self.dealer_hand = BlackjackHand(idx=None, dealer_hand=True)
+        self.player_hands = []
         for p in range(self.num_players):
-            self.players.append(BlackjackHand(dealer_hand=False))
+            self.player_hands.append(BlackjackHand(idx=p, dealer_hand=False))
 
         # Deal 2 rounds of cards
         self.deal_round_of_cards()
@@ -131,47 +156,52 @@ class Simulation(object):
 
         self.log_all_hands()
 
-        dealer_up_card = self.dealer.cards[0]
+        dealer_up_card = self.dealer_hand.cards[0]
 
-        # Pay 3 card bonus
+        # TODO: Pay 3 card bonus
 
         # Check if dealer has blackjack
-        if self.dealer.is_blackjack:
-            for player in self.players:
-                if player.is_blackjack:
-                    player.result = BlackjackHandResult.PUSH
-                else:
-                    player.result = BlackjackHandResult.LOSS
+        if self.dealer_hand.is_blackjack:
+            for player_hand in self.player_hands:
+                self.evaluate_hand_result(
+                    player=self.players[player_hand.player_idx],
+                    player_hand=player_hand,
+                    dealer_has_bj=True
+                )
 
         else:
             # Play each player's hand
-            for player in self.players:
-                self.play_player_hand(dealer_up_card=dealer_up_card, player_hand=player)
+            for player_hand in self.player_hands:
+                self.play_player_hand(dealer_up_card=dealer_up_card, player_hand=player_hand)
 
             # Play dealer's hand
             self.play_dealer_hand()
 
             # Evaluate each player's hand
-            for player in self.players:
-                self.evaluate_hand_result(player)
+            for player_hand in self.player_hands:
+                self.evaluate_hand_result(
+                    player=self.players[player_hand.player_idx],
+                    player_hand=player_hand,
+                    dealer_has_bj=False
+                )
 
         self.log_all_hands()
 
-        # Pay bust bonus
+        # TODO: Pay bust bonus
 
 
     def deal_round_of_cards(self):
         # Deal to players
-        for player in self.players:
-            player.add_card(self.get_next_card())
+        for player_hand in self.player_hands:
+            player_hand.add_card(self.get_next_card())
 
         # Dealer takes card
-        self.dealer.add_card(self.get_next_card())
+        self.dealer_hand.add_card(self.get_next_card())
 
     def play_dealer_hand(self):
         action = self.determine_dealer_action()
 
-        self.log.debug(f'Playing dealer hand {self.dealer}, Action: {action}')
+        self.log.debug(f'Playing dealer hand {self.dealer_hand}, Action: {action}')
 
         # stand
         if action == 'S':
@@ -179,19 +209,19 @@ class Simulation(object):
 
         # hit
         elif action == 'H':
-            self.dealer.add_card(self.get_next_card())
+            self.dealer_hand.add_card(self.get_next_card())
             self.play_dealer_hand()
 
     def determine_dealer_action(self):
-        if self.dealer.soft_value and self.dealer.soft_value > 17:
+        if self.dealer_hand.soft_value and self.dealer_hand.soft_value > 17:
             return 'S'
-        elif self.dealer.hard_value >= 17:
+        elif self.dealer_hand.hard_value >= 17:
             return 'S'
         else:
             return 'H'
 
     def play_player_hand(self, dealer_up_card, player_hand):
-        action = self.determine_player_action(dealer_up_card=dealer_up_card, player_hand=player_hand)
+        action = self.strategy.determine_player_action(dealer_up_card=dealer_up_card, player_hand=player_hand)
 
         self.log.debug(f'Playing player hand {player_hand}, Action: {action}')
 
@@ -207,6 +237,8 @@ class Simulation(object):
             if player_hand.hard_value > 21:
                 player_hand.result = BlackjackHandResult.LOSS
 
+                self.players[player_hand.player_idx].record_hand_result(bj_hand_result=player_hand.result)
+
             self.play_player_hand(dealer_up_card=dealer_up_card, player_hand=player_hand)
 
         # double
@@ -220,64 +252,37 @@ class Simulation(object):
             self.play_player_hand(dealer_up_card=dealer_up_card, player_hand=player_hand)
             self.play_player_hand(dealer_up_card=dealer_up_card, player_hand=player_hand.linked_hand)
 
-    def determine_player_action(self, dealer_up_card, player_hand):
-        num_cards = len(player_hand.cards)
-        hand_cards = player_hand.get_hand_as_ranks()
-        dealer_up_card_idx = Card.get_dealer_up_card_index(dealer_up_card)
-
-        action = None
-        # Determine the player's first action for the hand
-        if num_cards == 2:
+    def evaluate_hand_result(self, player, player_hand, dealer_has_bj):
+        if dealer_has_bj:
             if player_hand.is_blackjack:
-                action = 'S'
-            elif hand_cards in self.strategy.soft_hands.keys():
-                action = self.strategy.soft_hands[hand_cards][dealer_up_card_idx]
-            elif hand_cards in self.strategy.pairs.keys():
-                action = self.strategy.pairs[hand_cards][dealer_up_card_idx]
-            elif player_hand.hard_value in self.strategy.hard_totals.keys():
-                action = self.strategy.hard_totals[player_hand.hard_value][dealer_up_card_idx]
-
-        # Determine the player's action after initially hitting
-        # Stand on soft 19 or greater, otherwise follow hard totals strategy and either hit or stand
-        # TODO: do we need to add another strategy config for this?
-        elif num_cards > 2:
-            if player_hand.soft_value and player_hand.soft_value >= 19:
-                return 'S'
-            elif player_hand.hard_value in self.strategy.hard_totals.keys():
-                action = self.strategy.hard_totals[player_hand.hard_value][dealer_up_card_idx]
-
-                if action == 'D':
-                    action = 'H'
-
-        # There will only be 1 card if we just split
-        elif num_cards == 1:
-            return 'H'
-
-        # Return action of stand if we're at 21 or busted
-        if player_hand.hard_value >= 21:
-            action = 'S'
-
-        if not action:
-            raise DetermineActionError(f'Unable to determine player action for hand: {hand_cards}')
-
-        return action
-
-    def evaluate_hand_result(self, player_hand):
-        if player_hand.result == BlackjackHandResult.UNDETERMINED:
-            player_hand_value = player_hand.get_ultimate_value()
-            dealer_hand_value = self.dealer.get_ultimate_value()
-
-            if self.dealer.hard_value > 21:
-                player_hand.result = BlackjackHandResult.WIN
-            elif player_hand.is_blackjack:
-                player_hand.result = BlackjackHandResult.WIN
-            elif player_hand_value > dealer_hand_value:
-                player_hand.result = BlackjackHandResult.WIN
-            elif player_hand_value == dealer_hand_value:
                 player_hand.result = BlackjackHandResult.PUSH
-            elif player_hand_value < dealer_hand_value:
+            else:
                 player_hand.result = BlackjackHandResult.LOSS
 
-        if player_hand.linked_hand:
-            self.evaluate_hand_result(player_hand.linked_hand)
+            player.record_hand_result(bj_hand_result=player_hand.result)
+
+        else:
+            if player_hand.result == BlackjackHandResult.UNDETERMINED:
+                player_hand_value = player_hand.get_ultimate_value()
+                dealer_hand_value = self.dealer_hand.get_ultimate_value()
+
+                if self.dealer_hand.hard_value > 21:
+                    player_hand.result = BlackjackHandResult.WIN
+                elif player_hand.is_blackjack:
+                    player_hand.result = BlackjackHandResult.WIN
+                elif player_hand_value > dealer_hand_value:
+                    player_hand.result = BlackjackHandResult.WIN
+                elif player_hand_value == dealer_hand_value:
+                    player_hand.result = BlackjackHandResult.PUSH
+                elif player_hand_value < dealer_hand_value:
+                    player_hand.result = BlackjackHandResult.LOSS
+
+                player.record_hand_result(bj_hand_result=player_hand.result)
+
+            if player_hand.linked_hand:
+                self.evaluate_hand_result(
+                    player=player,
+                    player_hand=player_hand.linked_hand,
+                    dealer_has_bj=dealer_has_bj
+                )
 

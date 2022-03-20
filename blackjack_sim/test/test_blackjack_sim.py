@@ -74,7 +74,7 @@ class TestSimulation(unittest.TestCase):
     @staticmethod
     def get_blackjack_hand(ranks_str, suited=False, is_dealer_hand=False):
 
-        hand = BlackjackHand(dealer_hand=is_dealer_hand)
+        hand = BlackjackHand(idx=None if is_dealer_hand else 0, dealer_hand=is_dealer_hand)
 
         suit_idx = 0
         for rank in ranks_str:
@@ -108,11 +108,11 @@ class TestSimulation(unittest.TestCase):
             for p2 in Card.CARD_RANKS:
                 for d in Card.CARD_RANKS:
                     # Suits don't matter here
-                    player_hand = BlackjackHand(dealer_hand=False)
+                    player_hand = BlackjackHand(idx=0, dealer_hand=False)
                     player_hand.add_card(Card('C', p1))
                     player_hand.add_card(Card('C', p2))
 
-                    action = sim.determine_player_action(dealer_up_card=Card('C', d), player_hand=player_hand)
+                    action = sim.strategy.determine_player_action(dealer_up_card=Card('C', d), player_hand=player_hand)
 
                     assert action
 
@@ -152,7 +152,7 @@ class TestSimulation(unittest.TestCase):
         player_hand = self.get_blackjack_hand(ranks_str=player_hand_str)
         dealer_up_card = Card('C', dealer_up_card_rank)
 
-        action = sim.determine_player_action(dealer_up_card=dealer_up_card, player_hand=player_hand)
+        action = sim.strategy.determine_player_action(dealer_up_card=dealer_up_card, player_hand=player_hand)
 
         assert action == expected_action
 
@@ -170,21 +170,21 @@ class TestSimulation(unittest.TestCase):
         dealer_up_card = Card('C', 'K')
 
         # A2A - Hit
-        action = sim.determine_player_action(dealer_up_card=dealer_up_card, player_hand=player_hand)
+        action = sim.strategy.determine_player_action(dealer_up_card=dealer_up_card, player_hand=player_hand)
 
         assert action == 'H'
 
         player_hand.add_card(Card('C', '2'))
 
         # A2A2 - Hit
-        action = sim.determine_player_action(dealer_up_card=dealer_up_card, player_hand=player_hand)
+        action = sim.strategy.determine_player_action(dealer_up_card=dealer_up_card, player_hand=player_hand)
 
         assert action == 'H'
 
         player_hand.add_card(Card('D', '3'))
 
         # A2A23 (9/19) - Stand
-        action = sim.determine_player_action(dealer_up_card=dealer_up_card, player_hand=player_hand)
+        action = sim.strategy.determine_player_action(dealer_up_card=dealer_up_card, player_hand=player_hand)
 
         assert action == 'S'
 
