@@ -80,7 +80,7 @@ class BlackjackHandResult(Enum):
 
 class BlackjackHand(object):
 
-    def __init__(self, idx, dealer_hand):
+    def __init__(self, idx, dealer_hand, bet=0):
         self.player_idx = idx
         self.cards = []
         self.hard_value = 0         # All hands have a hard value
@@ -90,7 +90,7 @@ class BlackjackHand(object):
         self.is_dealer_hand = dealer_hand
         self.result = BlackjackHandResult.UNDETERMINED
 
-        self.bet = 0
+        self.bet = bet
 
         self.linked_hand = None     # Splitting adds a new hand here
 
@@ -166,32 +166,49 @@ class BlackjackPlayer(object):
 
     def __init__(self, idx, buyin=0):
         self.player_idx = idx
+        self.buyin = buyin
         self.chip_stack = buyin
         self.num_hands_played = 0
         self.num_wins = 0
         self.num_pushes = 0
         self.num_losses = 0
 
-    def record_hand_result(self, bj_hand_result):
+    def record_hand_result(self, bj_hand):
         self.num_hands_played += 1
 
-        if bj_hand_result == BlackjackHandResult.WIN:
+        if bj_hand.result == BlackjackHandResult.WIN:
             self.num_wins += 1
-        elif bj_hand_result == BlackjackHandResult.PUSH:
+
+            # pay player; 3:2 for blackjack
+            self.chip_stack += 1.5 * bj_hand.bet if bj_hand.is_blackjack else bj_hand.bet
+
+        elif bj_hand.result == BlackjackHandResult.PUSH:
             self.num_pushes += 1
-        elif bj_hand_result == BlackjackHandResult.LOSS:
+
+        elif bj_hand.result == BlackjackHandResult.LOSS:
             self.num_losses += 1
-        elif bj_hand_result == BlackjackHandResult.UNDETERMINED:
+
+            # deduct loss
+            self.chip_stack -= bj_hand.bet
+
+        elif bj_hand.result == BlackjackHandResult.UNDETERMINED:
             raise GameplayError('Tried to record UNDETERMINED result')
         else:
             raise GameplayError('Tried to record unknown result')
 
-    def get_gameplay_result_str(self):
-        pct_win = round((self.num_wins / self.num_hands_played) * 100, 1) if self.num_hands_played > 0 else 0
-        pct_push = round((self.num_pushes / self.num_hands_played) * 100, 1) if self.num_hands_played > 0 else 0
-        pct_loss = round((self.num_losses / self.num_hands_played) * 100, 1) if self.num_hands_played > 0 else 0
+    def get_gameplay_result_str(self, min_bet):
+        pct_win = (self.num_wins / self.num_hands_played) * 100 if self.num_hands_played > 0 else 0
+        pct_push = (self.num_pushes / self.num_hands_played) * 100 if self.num_hands_played > 0 else 0
+        pct_loss = (self.num_losses / self.num_hands_played) * 100 if self.num_hands_played > 0 else 0
 
-        return f'Hands={self.num_hands_played}, Wins={self.num_wins} ({pct_win}%), Pushes={self.num_pushes} ({pct_push}%), Losses={self.num_losses} ({pct_loss}%), Chips={self.chip_stack}'
+        net_change = self.chip_stack - self.buyin
+        net_change_per_hand = net_change / self.num_hands_played if self.num_hands_played > 0 else 0
+        edge = (net_change_per_hand / min_bet) * 100 if min_bet > 0 else 0
+
+        return f'Hands={self.num_hands_played}, Wins={self.num_wins} ({round(pct_win, 1)}%), ' \
+               f'Pushes={self.num_pushes} ({round(pct_push, 1)}%), Losses={self.num_losses} ({round(pct_loss, 1)}%), ' \
+               f'Stack: ${self.chip_stack}, Net Change: ${net_change}, NC Per Hand: ${round(net_change_per_hand, 2)}, ' \
+               f'Edge: {round(edge, 2)}%'
 
 
 
