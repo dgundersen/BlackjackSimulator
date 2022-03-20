@@ -78,6 +78,11 @@ class Simulation(object):
         self.log = Utils.get_logger(f'Simulation-{idx}', log_level)
 
     def get_next_card(self):
+        if len(self.shoe) == 0:
+            self.log.warn('WARNING: Tried to get card from empty shoe')
+
+            self.new_shoe()
+
         return self.shoe.pop(0)
 
     def run(self):
@@ -136,16 +141,19 @@ class Simulation(object):
                 result_str = p.get_gameplay_result_str(min_bet=self.min_bet)
                 self.log.info(f'    Player {p.player_idx}: {result_str}')
 
+    def new_shoe(self):
+        self.shoe = Shoe(self.num_decks).cards
+        burn_card = self.get_next_card()
+
+        self.log.debug(f'New shoe of {self.num_decks} decks, {len(self.shoe)} cards; burn card: {burn_card}')
+
     def play_round(self):
         self.num_hands_played += 1
         self.sessions[self.session_idx].num_hands_played += 1
 
         # Check if we need a new shoe
         if len(self.shoe) < self.SHOE_CUTOFF:
-            self.shoe = Shoe(self.num_decks).cards
-            burn_card = self.get_next_card()
-
-            self.log.debug(f'New shoe of {self.num_decks} decks, {len(self.shoe)} cards; burn card: {burn_card}')
+            self.new_shoe()
 
         # Reset hands
         self.dealer_hand = BlackjackHand(idx=None, dealer_hand=True)

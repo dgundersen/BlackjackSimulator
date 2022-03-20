@@ -13,7 +13,7 @@
   {
     "name": "Simulation #2 - Six Decks",
     "num_decks": 6,
-    "num_players": 3,
+    "num_players": 1,
     "num_sessions": 1,
     "max_session_hands": 1000000,
     "min_bet": 15,
