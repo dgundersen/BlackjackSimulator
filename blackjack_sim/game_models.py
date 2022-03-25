@@ -34,6 +34,7 @@ class Card(object):
         if rank in ['K', 'Q', 'J']:
             rank = 'T'
 
+        # TODO: change this to a dict lookup instead of .index() every time
         return Card.CARD_STRATEGY_RANKS.index(rank)
 
 class Deck(object):
@@ -80,8 +81,8 @@ class BlackjackHandResult(Enum):
 
 class BlackjackHand(object):
 
-    def __init__(self, idx, dealer_hand, bet=0):
-        self.player_idx = idx
+    def __init__(self, player_idx, dealer_hand, bet=0):
+        self.player_idx = player_idx
         self.cards = []
         self.hard_value = 0         # All hands have a hard value
         self.soft_value = None      # Hands may not have a soft value
@@ -91,8 +92,6 @@ class BlackjackHand(object):
         self.result = BlackjackHandResult.UNDETERMINED
 
         self.bet = bet
-
-        self.linked_hand = None     # Splitting adds a new hand here
 
     def __str__(self):
         hand_str = ''
@@ -148,8 +147,10 @@ class BlackjackHand(object):
         if self.cards[0].rank != self.cards[1].rank:
             raise GameplayError('Tried to split hand with unmatched cards')
 
-        self.linked_hand = BlackjackHand(idx=self.player_idx, dealer_hand=False)
-        self.linked_hand.add_card(self.cards.pop())
+        new_hand = BlackjackHand(player_idx=self.player_idx, dealer_hand=False)
+        new_hand.add_card(self.cards.pop())
+
+        return new_hand
 
 class BlackjackSession(object):
 
@@ -172,6 +173,8 @@ class BlackjackPlayer(object):
         self.num_wins = 0
         self.num_pushes = 0
         self.num_losses = 0
+
+        self.hands = []  # list of BlackjackHand objects; will be multiple when we split
 
     def record_hand_result(self, bj_hand):
         self.num_hands_played += 1
@@ -203,12 +206,12 @@ class BlackjackPlayer(object):
 
         net_change = self.chip_stack - self.buyin
         net_change_per_hand = net_change / self.num_hands_played if self.num_hands_played > 0 else 0
-        edge = (net_change_per_hand / min_bet) * 100 if min_bet > 0 else 0
+        edge = -((net_change_per_hand / min_bet) * 100) if min_bet > 0 else 0
 
         return f'Hands={self.num_hands_played}, Wins={self.num_wins} ({round(pct_win, 1)}%), ' \
                f'Pushes={self.num_pushes} ({round(pct_push, 1)}%), Losses={self.num_losses} ({round(pct_loss, 1)}%), ' \
                f'Stack: ${self.chip_stack}, Net Change: ${net_change}, NC Per Hand: ${round(net_change_per_hand, 2)}, ' \
-               f'Edge: {round(edge, 2)}%'
+               f'House Edge: {round(edge, 2)}%'
 
 
 

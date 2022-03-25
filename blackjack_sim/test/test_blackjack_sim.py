@@ -74,7 +74,7 @@ class TestSimulation(unittest.TestCase):
     @staticmethod
     def get_blackjack_hand(ranks_str, suited=False, is_dealer_hand=False):
 
-        hand = BlackjackHand(idx=None if is_dealer_hand else 0, dealer_hand=is_dealer_hand)
+        hand = BlackjackHand(player_idx=None if is_dealer_hand else 0, dealer_hand=is_dealer_hand)
 
         suit_idx = 0
         for rank in ranks_str:
@@ -108,7 +108,7 @@ class TestSimulation(unittest.TestCase):
             for p2 in Card.CARD_RANKS:
                 for d in Card.CARD_RANKS:
                     # Suits don't matter here
-                    player_hand = BlackjackHand(idx=0, dealer_hand=False)
+                    player_hand = BlackjackHand(player_idx=0, dealer_hand=False)
                     player_hand.add_card(Card('C', p1))
                     player_hand.add_card(Card('C', p2))
 
@@ -187,6 +187,28 @@ class TestSimulation(unittest.TestCase):
         action = sim.strategy.determine_player_action(dealer_up_card=dealer_up_card, player_hand=player_hand)
 
         assert action == 'S'
+
+    # Specifically tests resplitting aces
+    def test_resplitting_aces(self):
+        sim = self.get_simulation()
+
+        hand_1 = self.get_blackjack_hand(ranks_str='AA')
+        dealer_up_card = Card('C', 'K')
+
+        assert sim.strategy.determine_player_action(dealer_up_card=dealer_up_card, player_hand=hand_1) == 'SP'
+
+        hand_2 = hand_1.split_hand()
+
+        assert hand_2 is not None
+
+        hand_1.add_card(Card('C', 'A'))
+        hand_2.add_card(Card('D', 'A'))
+
+        assert sim.strategy.determine_player_action(dealer_up_card=dealer_up_card, player_hand=hand_1) == 'SP'
+        assert sim.strategy.determine_player_action(dealer_up_card=dealer_up_card, player_hand=hand_2) == 'SP'
+
+        # TODO: finish this; implement max resplit of up to 4 hands
+
 
 
 
