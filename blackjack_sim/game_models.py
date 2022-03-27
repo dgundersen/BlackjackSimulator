@@ -11,7 +11,20 @@ class Card(object):
     """
     CARD_RANKS = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2']
     CARD_SUITS = ['C', 'D', 'H', 'S']
-    CARD_STRATEGY_RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'A']
+
+    CARD_STRATEGY_RANK_LOOKUP = {
+        '2': 0,
+        '3': 1,
+        '4': 2,
+        '5': 3,
+        '6': 4,
+        '7': 5,
+        '8': 6,
+        '9': 7,
+        'T': 8,
+        'A': 9
+    }
+
 
     def __init__(self, suit, rank):
         self.suit = suit
@@ -34,8 +47,7 @@ class Card(object):
         if rank in ['K', 'Q', 'J']:
             rank = 'T'
 
-        # TODO: change this to a dict lookup instead of .index() every time
-        return Card.CARD_STRATEGY_RANKS.index(rank)
+        return Card.CARD_STRATEGY_RANK_LOOKUP[rank]
 
 class Deck(object):
 
