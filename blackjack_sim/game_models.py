@@ -93,8 +93,8 @@ class BlackjackHandResult(Enum):
 
 class BlackjackHand(object):
 
-    def __init__(self, player_idx, dealer_hand, bet=0):
-        self.player_idx = player_idx
+    def __init__(self, player, dealer_hand, bet=0):
+        self.player = player
         self.cards = []
         self.hard_value = 0         # All hands have a hard value
         self.soft_value = None      # Hands may not have a soft value
@@ -159,7 +159,7 @@ class BlackjackHand(object):
         if self.cards[0].rank != self.cards[1].rank:
             raise GameplayError('Tried to split hand with unmatched cards')
 
-        new_hand = BlackjackHand(player_idx=self.player_idx, dealer_hand=False)
+        new_hand = BlackjackHand(player=self.player, dealer_hand=False)
         new_hand.add_card(self.cards.pop())
 
         return new_hand
@@ -185,11 +185,31 @@ class BlackjackPlayer(object):
         self.num_wins = 0
         self.num_pushes = 0
         self.num_losses = 0
+        self.allowed_to_split = True
+
+        # Key = # of hands split to, Value = # of occurences
+        # Ex.: {3:17} - A hand was split to 3 hands 17 times
+        self.num_split_hands_dict = {}
 
         self.hands = []  # list of BlackjackHand objects; will be multiple when we split
 
+    def reset_hands(self):
+        self.hands = []
+        self.allowed_to_split = True
+
+    def add_hand(self, bj_hand, split_limit):
+        self.hands.append(bj_hand)
+        if split_limit and len(self.hands) >= split_limit:
+            self.allowed_to_split = False
+
     def record_hand_result(self, bj_hand):
         self.num_hands_played += 1
+
+        if len(self.hands) > 1:
+            if len(self.hands) not in self.num_split_hands_dict:
+                self.num_split_hands_dict[len(self.hands)] = 1
+            else:
+                self.num_split_hands_dict[len(self.hands)] += 1
 
         if bj_hand.result == BlackjackHandResult.WIN:
             self.num_wins += 1
@@ -220,10 +240,20 @@ class BlackjackPlayer(object):
         net_change_per_hand = net_change / self.num_hands_played if self.num_hands_played > 0 else 0
         edge = -((net_change_per_hand / min_bet) * 100) if min_bet > 0 else 0
 
-        return f'Hands={self.num_hands_played}, Wins={self.num_wins} ({round(pct_win, 1)}%), ' \
-               f'Pushes={self.num_pushes} ({round(pct_push, 1)}%), Losses={self.num_losses} ({round(pct_loss, 1)}%), ' \
-               f'Stack: ${self.chip_stack}, Net Change: ${net_change}, NC Per Hand: ${round(net_change_per_hand, 2)}, ' \
-               f'House Edge: {round(edge, 2)}%'
+        results = []
 
+        results.append(f'Player {self.player_idx}')
 
+        results.append(f'Hands={self.num_hands_played}, Wins={self.num_wins} ({round(pct_win, 1)}%), Pushes={self.num_pushes} ({round(pct_push, 1)}%), Losses={self.num_losses} ({round(pct_loss, 1)}%), ')
+
+        results.append(f'Stack: ${self.chip_stack}, Net Change: ${net_change}, NC Per Hand: ${round(net_change_per_hand, 2)}, House Edge: {round(edge, 2)}%')
+
+        sorted_num_split_hands = {k: v for k, v in sorted(self.num_split_hands_dict.items())}
+
+        for num_hands, num_times in sorted_num_split_hands.items():
+            this_pct_split = (num_times / self.num_hands_played) * 100
+
+            results.append(f'Split to {num_hands}: {num_times} ({round(this_pct_split, 2)}%)')
+
+        return '\n'.join(results)
 

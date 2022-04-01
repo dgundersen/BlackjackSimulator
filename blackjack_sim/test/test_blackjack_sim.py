@@ -1,6 +1,6 @@
 import unittest
 from blackjack_sim.simulation import Simulation
-from blackjack_sim.game_models import Card, BlackjackHand
+from blackjack_sim.game_models import *
 from common_test_utils import *
 
 
@@ -22,7 +22,9 @@ class TestSimulation(unittest.TestCase):
         "_format": "list of actions for dealer up card of: 2, 3, 4, 5, 6, 7, 8, 9, T, A",
         "_key": "H = hit, S = stand, D = double, SP = split",
         "_source": "https://blackjack-strategy.co/blackjack-strategy-chart/blackjack-strategy-card-downtown-las-vegas/",
+        "_notes": "Soft hands include AA for when we can't resplit",
         "hard_totals": {
+            "3": ["H", "H", "H", "H", "H", "H", "H", "H", "H", "H"],
             "4": ["H", "H", "H", "H", "H", "H", "H", "H", "H", "H"],
             "5": ["H", "H", "H", "H", "H", "H", "H", "H", "H", "H"],
             "6": ["H", "H", "H", "H", "H", "H", "H", "H", "H", "H"],
@@ -42,6 +44,7 @@ class TestSimulation(unittest.TestCase):
             "20": ["S", "S", "S", "S", "S", "S", "S", "S", "S", "S"]
         },
         "soft_hands": {
+            "AA": ["H", "H", "H", "D", "D", "H", "H", "H", "H", "H"],
             "A2": ["H", "H", "H", "D", "D", "H", "H", "H", "H", "H"],
             "A3": ["H", "H", "H", "D", "D", "H", "H", "H", "H", "H"],
             "A4": ["H", "H", "D", "D", "D", "H", "H", "H", "H", "H"],
@@ -74,7 +77,7 @@ class TestSimulation(unittest.TestCase):
     @staticmethod
     def get_blackjack_hand(ranks_str, suited=False, is_dealer_hand=False):
 
-        hand = BlackjackHand(player_idx=None if is_dealer_hand else 0, dealer_hand=is_dealer_hand)
+        hand = BlackjackHand(player=None if is_dealer_hand else BlackjackPlayer(idx=0, buyin=500), dealer_hand=is_dealer_hand)
 
         suit_idx = 0
         for rank in ranks_str:
@@ -108,7 +111,7 @@ class TestSimulation(unittest.TestCase):
             for p2 in Card.CARD_RANKS:
                 for d in Card.CARD_RANKS:
                     # Suits don't matter here
-                    player_hand = BlackjackHand(player_idx=0, dealer_hand=False)
+                    player_hand = BlackjackHand(player=BlackjackPlayer(idx=0, buyin=500), dealer_hand=False)
                     player_hand.add_card(Card('C', p1))
                     player_hand.add_card(Card('C', p2))
 
@@ -161,12 +164,15 @@ class TestSimulation(unittest.TestCase):
         dict(player_hand_str='A2A'),
         dict(player_hand_str='2AA'),
         dict(player_hand_str='A3A'),
-        dict(player_hand_str='A4A')
+        dict(player_hand_str='AAA')
     ])
     def test_high_soft_totals(self, player_hand_str):
         sim = self.get_simulation()
 
         player_hand = self.get_blackjack_hand(ranks_str=player_hand_str)
+
+        print(f'Player Hand: {player_hand}')
+
         dealer_up_card = Card('C', 'K')
 
         # A2A - Hit
@@ -181,9 +187,10 @@ class TestSimulation(unittest.TestCase):
 
         assert action == 'H'
 
-        player_hand.add_card(Card('D', '3'))
+        player_hand.add_card(Card('D', '4'))
 
-        # A2A23 (9/19) - Stand
+        # A2A24 (10/20) - Stand
+        # AAA24 (9/19) - Stand
         action = sim.strategy.determine_player_action(dealer_up_card=dealer_up_card, player_hand=player_hand)
 
         assert action == 'S'

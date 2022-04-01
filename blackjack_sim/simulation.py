@@ -61,9 +61,10 @@ class Simulation(object):
         self.max_session_hands = sim_config['max_session_hands']
         self.min_bet = sim_config['min_bet']
         self.buyin_num_bets = sim_config['buyin_num_bets']
+        self.split_limit = int(sim_config['split_limit']) if 'split_limit' in sim_config else None
         self.verbose = True if 'verbose' in sim_config and int(sim_config['verbose']) == 1 else False
 
-        self.strategy = Strategy(idx, strategy_config)
+        self.strategy = Strategy(strategy_config)
 
         self.shoe = []
         self.dealer_hand = None
@@ -131,7 +132,7 @@ class Simulation(object):
 
     def log_results(self):
         self.log.info('Results:')
-        self.log.info(f'# Simulation hands: {self.num_hands_played}')
+        self.log.info(f'# Sim Hands: {self.num_hands_played}')
         self.log.info(f'# Shoes: {self.num_shoes_used}')
         self.log.info(f'# Sessions: {self.num_sessions}')
         self.log.info(f'# Players: {self.num_players}')
@@ -141,7 +142,8 @@ class Simulation(object):
 
             for p in session.players:
                 result_str = p.get_gameplay_result_str(min_bet=self.min_bet)
-                self.log.info(f'    Player {p.player_idx}: {result_str}')
+                self.log.info("=====================================================================================")
+                self.log.info(result_str)
 
     def new_shoe(self):
         self.num_shoes_used += 1
@@ -151,10 +153,13 @@ class Simulation(object):
         self.log.debug(f'New shoe of {self.num_decks} decks, {len(self.shoe)} cards; burn card: {burn_card}')
 
     def reset_hands_for_next_round(self):
-        self.dealer_hand = BlackjackHand(player_idx=None, dealer_hand=True)
+        self.dealer_hand = BlackjackHand(player=None, dealer_hand=True)
         for player in self.current_session.players:
-            player.hands = []
-            player.hands.append(BlackjackHand(player_idx=player.player_idx, dealer_hand=False, bet=self.min_bet))
+            player.reset_hands()
+            player.add_hand(
+                bj_hand=BlackjackHand(player=player, dealer_hand=False, bet=self.min_bet),
+                split_limit=self.split_limit
+            )
 
     def play_round(self):
 
@@ -190,7 +195,6 @@ class Simulation(object):
         if self.dealer_hand.is_blackjack:
             for player_hand in starting_hands:
                 self.evaluate_hand_result(
-                    player=self.current_session.players[player_hand.player_idx],
                     player_hand=player_hand,
                     dealer_has_bj=True
                 )
@@ -207,7 +211,6 @@ class Simulation(object):
             for player in self.current_session.players:
                 for player_hand in player.hands:
                     self.evaluate_hand_result(
-                        player=self.current_session.players[player_hand.player_idx],
                         player_hand=player_hand,
                         dealer_has_bj=False
                     )
@@ -265,7 +268,7 @@ class Simulation(object):
             if player_hand.hard_value > 21:
                 player_hand.result = BlackjackHandResult.LOSS
 
-                self.current_session.players[player_hand.player_idx].record_hand_result(bj_hand=player_hand)
+                player_hand.player.record_hand_result(bj_hand=player_hand)
 
             self.play_player_hand(dealer_up_card=dealer_up_card, player_hand=player_hand)
 
@@ -278,19 +281,19 @@ class Simulation(object):
         elif action == 'SP':
             new_hand = player_hand.split_hand()
 
-            self.current_session.players[new_hand.player_idx].hands.append(new_hand)
+            player_hand.player.add_hand(bj_hand=new_hand, split_limit=self.split_limit)
 
             self.play_player_hand(dealer_up_card=dealer_up_card, player_hand=player_hand)
             self.play_player_hand(dealer_up_card=dealer_up_card, player_hand=new_hand)
 
-    def evaluate_hand_result(self, player, player_hand, dealer_has_bj):
+    def evaluate_hand_result(self, player_hand, dealer_has_bj):
         if dealer_has_bj:
             if player_hand.is_blackjack:
                 player_hand.result = BlackjackHandResult.PUSH
             else:
                 player_hand.result = BlackjackHandResult.LOSS
 
-            player.record_hand_result(bj_hand=player_hand)
+            player_hand.player.record_hand_result(bj_hand=player_hand)
 
         else:
             if player_hand.result == BlackjackHandResult.UNDETERMINED:
@@ -308,6 +311,6 @@ class Simulation(object):
                 elif player_hand_value < dealer_hand_value:
                     player_hand.result = BlackjackHandResult.LOSS
 
-                player.record_hand_result(bj_hand=player_hand)
+                player_hand.player.record_hand_result(bj_hand=player_hand)
 
 

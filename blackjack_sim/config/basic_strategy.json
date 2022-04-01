@@ -2,7 +2,9 @@
   "_format": "list of actions for dealer up card of: 2, 3, 4, 5, 6, 7, 8, 9, T, A",
   "_key": "H = hit, S = stand, D = double, SP = split",
   "_source": "https://blackjack-strategy.co/blackjack-strategy-chart/blackjack-strategy-card-downtown-las-vegas/",
+  "_notes": "Soft hands include AA for when we can't resplit",
   "hard_totals": {
+    "3": ["H", "H", "H", "H", "H", "H", "H", "H", "H", "H"],
     "4": ["H", "H", "H", "H", "H", "H", "H", "H", "H", "H"],
     "5": ["H", "H", "H", "H", "H", "H", "H", "H", "H", "H"],
     "6": ["H", "H", "H", "H", "H", "H", "H", "H", "H", "H"],
@@ -22,6 +24,7 @@
     "20": ["S", "S", "S", "S", "S", "S", "S", "S", "S", "S"]
   },
   "soft_hands": {
+    "AA": ["H", "H", "H", "D", "D", "H", "H", "H", "H", "H"],
     "A2": ["H", "H", "H", "D", "D", "H", "H", "H", "H", "H"],
     "A3": ["H", "H", "H", "D", "D", "H", "H", "H", "H", "H"],
     "A4": ["H", "H", "D", "D", "D", "H", "H", "H", "H", "H"],

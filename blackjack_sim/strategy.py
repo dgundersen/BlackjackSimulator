@@ -4,7 +4,7 @@ from blackjack_sim.errors import *
 
 class Strategy(object):
 
-    def __init__(self, idx, strategy_config):
+    def __init__(self, strategy_config):
         self.hard_totals = {}  # dict; key=total, val=action
         self.soft_hands = {}  # dict; key=hand, val=action
         self.pairs = {}  # dict; key=hand, val=action
@@ -44,13 +44,14 @@ class Strategy(object):
 
         action = None
         # Determine the player's first action for the hand
+        # Look up pairs first (if still allowed to split), then soft hands, then hard totals; this order matters.
         if num_cards == 2:
             if player_hand.is_blackjack:
                 action = 'S'
+            elif player_hand.player.allowed_to_split and hand_cards in self.pairs.keys():
+                action = self.pairs[hand_cards][dealer_up_card_idx]
             elif hand_cards in self.soft_hands.keys():
                 action = self.soft_hands[hand_cards][dealer_up_card_idx]
-            elif hand_cards in self.pairs.keys():
-                action = self.pairs[hand_cards][dealer_up_card_idx]
             elif player_hand.hard_value in self.hard_totals.keys():
                 action = self.hard_totals[player_hand.hard_value][dealer_up_card_idx]
 
