@@ -5,6 +5,8 @@ from common_test_utils import *
 
 
 class TestSimulation(unittest.TestCase):
+    PLAYER_BUYIN = 500
+    SPLIT_LIMIT = 4
 
     simulation_config = {
         "name": "Unit Tests Simulation",
@@ -74,10 +76,14 @@ class TestSimulation(unittest.TestCase):
     def get_simulation(self):
         return Simulation(0, self.simulation_config, self.strategy_config)
 
-    @staticmethod
-    def get_blackjack_hand(ranks_str, suited=False, is_dealer_hand=False):
+    def get_blackjack_hand(self, ranks_str, suited=False, is_dealer_hand=False):
 
-        hand = BlackjackHand(player=None if is_dealer_hand else BlackjackPlayer(idx=0, buyin=500), dealer_hand=is_dealer_hand)
+        if is_dealer_hand:
+            hand = BlackjackHand(player=None, dealer_hand=is_dealer_hand)
+        else:
+            player = BlackjackPlayer(idx=0, buyin=self.PLAYER_BUYIN)
+            hand = BlackjackHand(player=player, dealer_hand=is_dealer_hand)
+            player.add_hand(bj_hand=hand, split_limit=self.SPLIT_LIMIT)
 
         suit_idx = 0
         for rank in ranks_str:
@@ -200,11 +206,16 @@ class TestSimulation(unittest.TestCase):
         sim = self.get_simulation()
 
         hand_1 = self.get_blackjack_hand(ranks_str='AA')
+
+        player = hand_1.player
+
         dealer_up_card = Card('C', 'K')
 
         assert sim.strategy.determine_player_action(dealer_up_card=dealer_up_card, player_hand=hand_1) == 'SP'
 
+        # First split; now 2 hands
         hand_2 = hand_1.split_hand()
+        player.add_hand(bj_hand=hand_2, split_limit=self.SPLIT_LIMIT)
 
         assert hand_2 is not None
 
@@ -214,8 +225,32 @@ class TestSimulation(unittest.TestCase):
         assert sim.strategy.determine_player_action(dealer_up_card=dealer_up_card, player_hand=hand_1) == 'SP'
         assert sim.strategy.determine_player_action(dealer_up_card=dealer_up_card, player_hand=hand_2) == 'SP'
 
-        # TODO: finish this; implement max resplit of up to 4 hands
+        # Second split; now 3 hands
+        hand_3 = hand_1.split_hand()
+        player.add_hand(bj_hand=hand_3, split_limit=self.SPLIT_LIMIT)
 
+        assert hand_3 is not None
+
+        hand_1.add_card(Card('H', 'A'))
+        hand_3.add_card(Card('S', 'A'))
+
+        assert sim.strategy.determine_player_action(dealer_up_card=dealer_up_card, player_hand=hand_3) == 'SP'
+
+        # Third split; now 4 hands; no more splits allowed
+        hand_4 = hand_2.split_hand()
+        player.add_hand(bj_hand=hand_4, split_limit=self.SPLIT_LIMIT)
+
+        assert hand_4 is not None
+        assert player.allowed_to_split is False
+
+        hand_2.add_card(Card('D', 'A'))
+        hand_4.add_card(Card('C', 'A'))
+
+        # No more splits allowed so the action for all hands should be Hit
+        assert sim.strategy.determine_player_action(dealer_up_card=dealer_up_card, player_hand=hand_1) == 'H'
+        assert sim.strategy.determine_player_action(dealer_up_card=dealer_up_card, player_hand=hand_2) == 'H'
+        assert sim.strategy.determine_player_action(dealer_up_card=dealer_up_card, player_hand=hand_3) == 'H'
+        assert sim.strategy.determine_player_action(dealer_up_card=dealer_up_card, player_hand=hand_4) == 'H'
 
 
 

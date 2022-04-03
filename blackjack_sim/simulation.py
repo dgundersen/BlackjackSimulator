@@ -3,7 +3,6 @@ import logging
 import time
 from blackjack_sim.game_models import *
 from blackjack_sim.strategy import Strategy
-from blackjack_sim.errors import *
 from blackjack_sim.utils import Utils
 
 
@@ -50,6 +49,9 @@ class SimulationManager(object):
             sim.run()
 
 class Simulation(object):
+
+    MINOR_LOG_SEPARATOR = '---------------------------------------------------------------------------------------'
+    MAJOR_LOG_SEPARATOR = '======================================================================================='
 
     SHOE_CUTOFF = 30  # if there are fewer than this many cards left then we get a new shoe
 
@@ -131,18 +133,20 @@ class Simulation(object):
         self.log.debug(f'{hand_type_str}: {bj_hand} - {bj_hand.result}')
 
     def log_results(self):
-        self.log.info('Results:')
-        self.log.info(f'# Sim Hands: {self.num_hands_played}')
+        self.log.info(self.MAJOR_LOG_SEPARATOR)
+        self.log.info('Simulation Results:')
+        self.log.info(f'# Hands: {self.num_hands_played}')
         self.log.info(f'# Shoes: {self.num_shoes_used}')
         self.log.info(f'# Sessions: {self.num_sessions}')
         self.log.info(f'# Players: {self.num_players}')
 
         for session in self.sessions:
-            self.log.info(f'  # Session {session.session_idx} hands: {session.num_hands_played}')
+            self.log.info(self.MAJOR_LOG_SEPARATOR)
+            self.log.info(f'# Session {session.session_idx} hands: {session.num_hands_played}')
 
             for p in session.players:
                 result_str = p.get_gameplay_result_str(min_bet=self.min_bet)
-                self.log.info("=====================================================================================")
+                self.log.info(self.MINOR_LOG_SEPARATOR)
                 self.log.info(result_str)
 
     def new_shoe(self):
