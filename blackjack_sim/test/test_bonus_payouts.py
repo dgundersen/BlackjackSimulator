@@ -23,13 +23,14 @@ class TestBonusPayouts(unittest.TestCase):
 
         # Suited defaults to clubs
         player_hand = TestConfig.get_blackjack_hand(ranks_str=player_hand_str, suited=True)
-        player_hand.bet = 25
+
+        bonus_bet = 25
 
         dealer_up_card = Card('C', dealer_up_card_rank)
 
-        payout = bonus_payer.get_21_3_payout(dealer_up_card=dealer_up_card, player_hand=player_hand)
+        payout = bonus_payer.get_21_3_payout(dealer_up_card=dealer_up_card, player_hand=player_hand, bonus_bet=bonus_bet)
 
-        assert payout == player_hand.bet * bonus_payer.STRAIGHT_FLUSH_MX
+        assert payout == bonus_bet * bonus_payer.STRAIGHT_FLUSH_MX
 
     @sub_test([
         dict(player_hand_str='53', dealer_up_card_rank='4'),
@@ -45,13 +46,14 @@ class TestBonusPayouts(unittest.TestCase):
         bonus_payer = BonusPayer()
 
         player_hand = TestConfig.get_blackjack_hand(ranks_str=player_hand_str, suited=False)
-        player_hand.bet = 25
+
+        bonus_bet = 25
 
         dealer_up_card = Card('C', dealer_up_card_rank)
 
-        payout = bonus_payer.get_21_3_payout(dealer_up_card=dealer_up_card, player_hand=player_hand)
+        payout = bonus_payer.get_21_3_payout(dealer_up_card=dealer_up_card, player_hand=player_hand, bonus_bet=bonus_bet)
 
-        assert payout == player_hand.bet * bonus_payer.STRAIGHT_MX
+        assert payout == bonus_bet * bonus_payer.STRAIGHT_MX
 
     @sub_test([
         dict(player_hand_str='59', dealer_up_card_rank='4'),
@@ -64,13 +66,14 @@ class TestBonusPayouts(unittest.TestCase):
         bonus_payer = BonusPayer()
 
         player_hand = TestConfig.get_blackjack_hand(ranks_str=player_hand_str, suited=True)
-        player_hand.bet = 25
+
+        bonus_bet = 25
 
         dealer_up_card = Card('C', dealer_up_card_rank)
 
-        payout = bonus_payer.get_21_3_payout(dealer_up_card=dealer_up_card, player_hand=player_hand)
+        payout = bonus_payer.get_21_3_payout(dealer_up_card=dealer_up_card, player_hand=player_hand, bonus_bet=bonus_bet)
 
-        assert payout == player_hand.bet * bonus_payer.FLUSH_MX
+        assert payout == bonus_bet * bonus_payer.FLUSH_MX
 
     @sub_test([
         dict(player_hand_str='55', dealer_up_card_rank='5'),
@@ -82,13 +85,14 @@ class TestBonusPayouts(unittest.TestCase):
         bonus_payer = BonusPayer()
 
         player_hand = TestConfig.get_blackjack_hand(ranks_str=player_hand_str, suited=True)
-        player_hand.bet = 25
+
+        bonus_bet = 25
 
         dealer_up_card = Card('C', dealer_up_card_rank)
 
-        payout = bonus_payer.get_21_3_payout(dealer_up_card=dealer_up_card, player_hand=player_hand)
+        payout = bonus_payer.get_21_3_payout(dealer_up_card=dealer_up_card, player_hand=player_hand, bonus_bet=bonus_bet)
 
-        assert payout == player_hand.bet * bonus_payer.TRIPLES_MX
+        assert payout == bonus_bet * bonus_payer.TRIPLES_MX
 
     # None of these hands should have a payout
     @sub_test([
@@ -102,11 +106,12 @@ class TestBonusPayouts(unittest.TestCase):
         bonus_payer = BonusPayer()
 
         player_hand = TestConfig.get_blackjack_hand(ranks_str=player_hand_str, suited=False)
-        player_hand.bet = 25
+
+        bonus_bet = 25
 
         dealer_up_card = Card('C', dealer_up_card_rank)
 
-        payout = bonus_payer.get_21_3_payout(dealer_up_card=dealer_up_card, player_hand=player_hand)
+        payout = bonus_payer.get_21_3_payout(dealer_up_card=dealer_up_card, player_hand=player_hand, bonus_bet=bonus_bet)
 
         assert not payout
 

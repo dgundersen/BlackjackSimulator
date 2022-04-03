@@ -57,7 +57,7 @@ class BonusPayer(object):
         Straight:       10:1
         Flush:           5:1
     """
-    def get_21_3_payout(self, dealer_up_card, player_hand):
+    def get_21_3_payout(self, dealer_up_card, player_hand, bonus_bet):
         if len(player_hand.cards) != 2:
             raise GameplayError(f'Incorrect # of cards ({len(player_hand.cards)}) in player hand for 21+3 bonus')
 
@@ -96,7 +96,7 @@ class BonusPayer(object):
         elif is_flush:
             multiplier = self.FLUSH_MX
 
-        return multiplier * player_hand.bet
+        return multiplier * bonus_bet
 
     def _check_for_straight(self, cards, rank_lookup):
 
