@@ -58,27 +58,33 @@ class BonusPayer(object):
         Flush:           5:1
     """
     def get_21_3_payout(self, dealer_up_card, player_hand):
-        multiplier = 0
-
         if len(player_hand.cards) != 2:
             raise GameplayError(f'Incorrect # of cards ({len(player_hand.cards)}) in player hand for 21+3 bonus')
 
-        all_cards = [dealer_up_card, player_hand.cards[0], player_hand.cards[1]]
-
-        # TODO: If we have an ace, also sort by ace high
-        sorted_cards = sorted(all_cards, key=lambda c: self.ACE_LOW_RANK_LOOKUP[c.rank])
-
-        is_straight = False
+        multiplier = 0
         is_flush = False
         is_trips = False
 
-        if sorted_cards[0].value() + 1 == sorted_cards[1].value() and sorted_cards[1].value() + 1 == sorted_cards[2].value():
-            is_straight = True
+        all_cards = [dealer_up_card, player_hand.cards[0], player_hand.cards[1]]
 
-        if sorted_cards[0].suit == sorted_cards[1].suit == sorted_cards[2].suit:
+        contains_ace = False
+        for c in all_cards:
+            if c.rank == 'A':
+                contains_ace = True
+
+        # Check for straight
+        is_straight = self._check_for_straight(all_cards, self.ACE_LOW_RANK_LOOKUP)
+
+        # If an ace exists (player or dealer) and ace low wasn't a straight then try ace high
+        if not is_straight and contains_ace:
+            is_straight = self._check_for_straight(all_cards, self.ACE_HIGH_RANK_LOOKUP)
+
+        # Check for flush
+        if all_cards[0].suit == all_cards[1].suit == all_cards[2].suit:
             is_flush = True
 
-        if sorted_cards[0].rank == sorted_cards[1].rank == sorted_cards[2].rank:
+        # Check for trips
+        if all_cards[0].rank == all_cards[1].rank == all_cards[2].rank:
             is_trips = True
 
         if is_straight and is_flush:
@@ -92,4 +98,15 @@ class BonusPayer(object):
 
         return multiplier * player_hand.bet
 
+    def _check_for_straight(self, cards, rank_lookup):
 
+        sorted_cards = sorted(cards, key=lambda c: rank_lookup[c.rank])
+
+        card_1_idx = rank_lookup[sorted_cards[0].rank]
+        card_2_idx = rank_lookup[sorted_cards[1].rank]
+        card_3_idx = rank_lookup[sorted_cards[2].rank]
+
+        if card_1_idx + 1 == card_2_idx and card_2_idx + 1 == card_3_idx:
+            return True
+        else:
+            return False
