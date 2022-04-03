@@ -89,6 +89,7 @@ class Simulation(object):
         return self.shoe.pop(0)
 
     def run(self):
+        self.log.info(self.MAJOR_LOG_SEPARATOR)
         self.log.info(f'\nRunning: {self.name}')
 
         start_time = time.perf_counter()
@@ -113,6 +114,7 @@ class Simulation(object):
                     self.play_round()
 
             self.log_results()
+            self.log.info(self.MINOR_LOG_SEPARATOR)
 
         except Exception as ex:
             self.log.error(ex, exc_info=True)
@@ -120,6 +122,7 @@ class Simulation(object):
         end_time = time.perf_counter()
 
         self.log.info(f"Finished in {end_time - start_time:0.4f} seconds")
+        self.log.info(self.MAJOR_LOG_SEPARATOR)
 
     def log_all_hands(self):
         self.log.debug('')
