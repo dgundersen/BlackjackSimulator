@@ -1,6 +1,7 @@
 from enum import Enum
 from random import randint
 from blackjack_sim.errors import *
+from blackjack_sim.bonuses import *
 
 
 class Card(object):
@@ -166,18 +167,18 @@ class BlackjackHand(object):
 
 class BlackjackSession(object):
 
-    def __init__(self, idx, num_players, buyin):
+    def __init__(self, idx, num_players, buyin, bonus_config=None):
         self.session_idx = idx
         self.num_hands_played = 0
         self.num_players = num_players
 
         self.players = []
         for p in range(self.num_players):
-            self.players.append(BlackjackPlayer(idx=p, buyin=buyin))
+            self.players.append(BlackjackPlayer(idx=p, buyin=buyin, bonus_config=bonus_config))
 
 class BlackjackPlayer(object):
 
-    def __init__(self, idx, buyin=0):
+    def __init__(self, idx, buyin=0, bonus_config=None):
         self.player_idx = idx
         self.buyin = buyin
         self.chip_stack = buyin
@@ -193,6 +194,10 @@ class BlackjackPlayer(object):
 
         self.hands = []  # list of BlackjackHand objects; will be multiple when we split
 
+        self.bonus_plan_21_3 = None
+        if bonus_config and '21_3' in bonus_config:
+            self.bonus_plan_21_3 = BonusPlan(bonus_config['21_3'])
+
     def reset_hands(self):
         self.hands = []
         self.allowed_to_split = True
@@ -201,6 +206,19 @@ class BlackjackPlayer(object):
         self.hands.append(bj_hand)
         if split_limit and len(self.hands) >= split_limit:
             self.allowed_to_split = False
+
+    def will_play_21_3_bonus(self):
+        return True if self.bonus_plan_21_3 and self.bonus_plan_21_3.will_play_bonus_bet() else False
+
+    def record_21_3_bonus_result(self, payout):
+        self.bonus_plan_21_3.record_bonus_result(payout=payout)
+
+        if payout:
+            # win
+            self.chip_stack += payout
+        else:
+            # loss
+            self.chip_stack -= self.bonus_plan_21_3.amount
 
     def record_hand_result(self, bj_hand):
         self.num_hands_played += 1
@@ -254,6 +272,10 @@ class BlackjackPlayer(object):
             this_pct_split = (num_times / self.num_hands_played) * 100
 
             results.append(f'Split to {num_hands}: {num_times} ({round(this_pct_split, 2)}%)')
+
+        # Bonus results
+        if self.bonus_plan_21_3:
+            results.append(self.bonus_plan_21_3.get_result_str())
 
         return '\n'.join(results)
 

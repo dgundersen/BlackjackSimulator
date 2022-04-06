@@ -4,6 +4,7 @@ import time
 from blackjack_sim.game_models import *
 from blackjack_sim.strategy import Strategy
 from blackjack_sim.utils import Utils
+from blackjack_sim.bonuses import *
 
 
 class SimulationManager(object):
@@ -68,6 +69,14 @@ class Simulation(object):
 
         self.strategy = Strategy(strategy_config)
 
+        # Bonus bets are really more strategy but putting it in sim config makes it easier
+        # to compare simulations of playing vs not playing bonus bets.
+        self.bonus_payer = None
+        self.bonus_bet_config = None
+        if 'bonus_bets' in sim_config:
+            self.bonus_payer = BonusPayer()
+            self.bonus_bet_config = sim_config['bonus_bets']
+
         self.shoe = []
         self.dealer_hand = None
         self.num_hands_played = 0
@@ -100,7 +109,8 @@ class Simulation(object):
                 self.current_session = BlackjackSession(
                     idx=s,
                     num_players=self.num_players,
-                    buyin=self.buyin_num_bets * self.min_bet
+                    buyin=self.buyin_num_bets * self.min_bet,
+                    bonus_config=self.bonus_bet_config
                 )
 
                 self.sessions.append(self.current_session)
@@ -190,13 +200,21 @@ class Simulation(object):
 
         dealer_up_card = self.dealer_hand.cards[0]
 
-        # TODO: Pay 3 card bonus
-
         # Get starting hands before playing/splitting
         starting_hands = []
         for player in self.current_session.players:
             for player_hand in player.hands:
                 starting_hands.append(player_hand)
+
+                # Pay 3 card bonus if configured
+                if player.will_play_21_3_bonus():
+                    bonus_payout = self.bonus_payer.get_21_3_payout(
+                        dealer_up_card=dealer_up_card,
+                        player_hand=player_hand,
+                        bonus_bet=player.bonus_plan_21_3.amount
+                    )
+
+                    player.record_21_3_bonus_result(payout=bonus_payout)
 
         # Check if dealer has blackjack
         if self.dealer_hand.is_blackjack:

@@ -1,6 +1,44 @@
 from blackjack_sim.errors import *
 
 
+class BonusPlan(object):
+
+    def __init__(self, bonus_config):
+        self.name = bonus_config['name']
+        self.frequency = bonus_config['frequency']
+        self.amount = int(bonus_config['amount'])
+
+        self.num_times_played = 0
+        self.num_wins = 0
+        self.num_losses = 0
+        self.net_amount = 0
+
+    def will_play_bonus_bet(self):
+        return self.frequency == 'always'
+
+    def record_bonus_result(self, payout):
+        self.num_times_played += 1
+
+        if payout:
+            # win
+            self.num_wins += 1
+            self.net_amount += payout
+        else:
+            # loss
+            self.num_losses += 1
+            self.net_amount -= self.amount
+
+    def get_result_str(self):
+        pct_win = (self.num_wins / self.num_times_played) * 100 if self.num_times_played > 0 else 0
+        pct_loss = (self.num_losses / self.num_times_played) * 100 if self.num_times_played > 0 else 0
+
+        net_change_per_hand = self.net_amount / self.num_times_played if self.num_times_played > 0 else 0
+        edge = -((net_change_per_hand / self.amount) * 100) if self.amount > 0 else 0
+
+        return f'{self.name}: Played={self.num_times_played}, Wins={self.num_wins} ({round(pct_win, 1)}%), Losses={self.num_losses} ({round(pct_loss, 1)}%), ' \
+               + f'Net: ${self.net_amount}, House Edge: {round(edge, 2)}%'
+
+
 class BonusPayer(object):
 
     STRAIGHT_FLUSH_MX = 30
