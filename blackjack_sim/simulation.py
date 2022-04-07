@@ -74,7 +74,7 @@ class Simulation(object):
         self.bonus_payer = None
         self.bonus_bet_config = None
         if 'bonus_bets' in sim_config:
-            self.bonus_payer = BonusPayer()
+            self.bonus_payer = TwentyOne3BonusPayer()
             self.bonus_bet_config = sim_config['bonus_bets']
 
         self.shoe = []
@@ -208,7 +208,7 @@ class Simulation(object):
 
                 # Pay 3 card bonus if configured
                 if player.will_play_21_3_bonus():
-                    bonus_payout = self.bonus_payer.get_21_3_payout(
+                    bonus_payout = self.bonus_payer.get_payout(
                         dealer_up_card=dealer_up_card,
                         player_hand=player_hand,
                         bonus_bet=player.bonus_plan_21_3.amount

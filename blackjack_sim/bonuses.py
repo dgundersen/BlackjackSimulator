@@ -41,11 +41,6 @@ class BonusPlan(object):
 
 class BonusPayer(object):
 
-    STRAIGHT_FLUSH_MX = 30
-    TRIPLES_MX = 20
-    STRAIGHT_MX = 10
-    FLUSH_MX = 5
-
     SUIT_LOOKUP = {
         'C': 0,
         'D': 1,
@@ -88,6 +83,28 @@ class BonusPayer(object):
     def __init__(self):
         pass
 
+    def _is_straight(self, cards, rank_lookup):
+
+        sorted_cards = sorted(cards, key=lambda c: rank_lookup[c.rank])
+
+        card_1_idx = rank_lookup[sorted_cards[0].rank]
+        card_2_idx = rank_lookup[sorted_cards[1].rank]
+        card_3_idx = rank_lookup[sorted_cards[2].rank]
+
+        if card_1_idx + 1 == card_2_idx and card_2_idx + 1 == card_3_idx:
+            return True
+        else:
+            return False
+
+    def _is_flush(self, cards):
+        suits_found = {}
+        for card in cards:
+            suits_found[card.suit] = 1
+
+        return len(suits_found.keys()) == 1
+
+
+class TwentyOne3BonusPayer(BonusPayer):
     """
     Payouts:
         Straight Flush: 30:1
@@ -95,13 +112,16 @@ class BonusPayer(object):
         Straight:       10:1
         Flush:           5:1
     """
-    def get_21_3_payout(self, dealer_up_card, player_hand, bonus_bet):
+    STRAIGHT_FLUSH_MX = 30
+    TRIPLES_MX = 20
+    STRAIGHT_MX = 10
+    FLUSH_MX = 5
+
+    def get_payout(self, dealer_up_card, player_hand, bonus_bet):
         if len(player_hand.cards) != 2:
             raise GameplayError(f'Incorrect # of cards ({len(player_hand.cards)}) in player hand for 21+3 bonus')
 
         multiplier = 0
-        is_flush = False
-        is_trips = False
 
         all_cards = [dealer_up_card, player_hand.cards[0], player_hand.cards[1]]
 
@@ -111,17 +131,17 @@ class BonusPayer(object):
                 contains_ace = True
 
         # Check for straight
-        is_straight = self._check_for_straight(all_cards, self.ACE_LOW_RANK_LOOKUP)
+        is_straight = self._is_straight(all_cards, self.ACE_LOW_RANK_LOOKUP)
 
         # If an ace exists (player or dealer) and ace low wasn't a straight then try ace high
         if not is_straight and contains_ace:
-            is_straight = self._check_for_straight(all_cards, self.ACE_HIGH_RANK_LOOKUP)
+            is_straight = self._is_straight(all_cards, self.ACE_HIGH_RANK_LOOKUP)
 
         # Check for flush
-        if all_cards[0].suit == all_cards[1].suit == all_cards[2].suit:
-            is_flush = True
+        is_flush = self._is_flush(all_cards)
 
         # Check for trips
+        is_trips = False
         if all_cards[0].rank == all_cards[1].rank == all_cards[2].rank:
             is_trips = True
 
@@ -136,15 +156,65 @@ class BonusPayer(object):
 
         return multiplier * bonus_bet
 
-    def _check_for_straight(self, cards, rank_lookup):
 
-        sorted_cards = sorted(cards, key=lambda c: rank_lookup[c.rank])
+class BustBonusPayer(BonusPayer):
+    """
+    Payouts: Non-Suited   Suited
+      Ace:   3:1          50:1
+        2:   1:1          25:1
+        3:   1:1          15:1
+        4:   1:1          10:1
+        5:   1:1           5:1
+        6:   1:1           3:1
+        7:   2:1          15:1
+        8:   2:1          10:1
+        9:   2:1          20:1
+       10:   2:1          20:1
+      888:  25:1          75:1
+    """
 
-        card_1_idx = rank_lookup[sorted_cards[0].rank]
-        card_2_idx = rank_lookup[sorted_cards[1].rank]
-        card_3_idx = rank_lookup[sorted_cards[2].rank]
+    # Keys are value of the dealer up card.
+    # 888 is a special case that will be handled separately.
+    MX_LOOKUP = {
+        "suited": {
+            1: 50,
+            2: 25,
+            3: 15,
+            4: 10,
+            5: 5,
+            6: 3,
+            7: 15,
+            8: 10,
+            9: 20,
+            10: 20
+        },
+        "non-suited": {
+            1: 3,
+            2: 1,
+            3: 1,
+            4: 1,
+            5: 1,
+            6: 1,
+            7: 2,
+            8: 2,
+            9: 2,
+            10: 2
+        }
+    }
 
-        if card_1_idx + 1 == card_2_idx and card_2_idx + 1 == card_3_idx:
-            return True
+    def get_payout(self, dealer_hand, bonus_bet):
+        multiplier = 0
+
+        is_flush = self._is_flush(dealer_hand.cards)
+
+        if len(dealer_hand.cards) == 3 and dealer_hand.cards[0].value() == 8 and dealer_hand.cards[1].value() == 8 and dealer_hand.cards[2].value() == 8:
+            # 888
+            multiplier = 75 if is_flush else 25
         else:
-            return False
+            # just check up card
+            payout_set = 'suited' if is_flush else 'non-suited'
+            multiplier = self.MX_LOOKUP[payout_set][dealer_hand.cards[0].value()]
+
+        return multiplier * bonus_bet
+
+

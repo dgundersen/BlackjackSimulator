@@ -16,7 +16,7 @@
     "num_decks": 6,
     "num_players": 3,
     "num_sessions": 1,
-    "max_session_hands": 100000,
+    "max_session_hands": 50000,
     "min_bet": 15,
     "buyin_num_bets": 20,
     "split_limit": 4,
@@ -25,6 +25,11 @@
     "bonus_bets": {
       "21_3": {
         "name": "21+3 Bonus",
+        "frequency": "always",
+        "amount": 1
+      },
+      "bust": {
+        "name": "Bust Bonus",
         "frequency": "always",
         "amount": 1
       }
