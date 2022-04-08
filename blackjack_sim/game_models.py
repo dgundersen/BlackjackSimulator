@@ -31,10 +31,16 @@ class Card(object):
         self.suit = suit
         self.rank = rank
 
+        # hard value
+        self.value = self._get_value()
+
+        # used to look up strategy action to take based on dealer up card
+        self.dealer_up_card_index = self._get_dealer_up_card_index()
+
     def __str__(self):
         return f'{self.rank}'
 
-    def value(self):
+    def _get_value(self):
         if self.rank in ['2', '3', '4', '5', '6', '7', '8', '9']:
             return int(self.rank)
         elif self.rank in ['T', 'J', 'Q', 'K']:
@@ -42,13 +48,12 @@ class Card(object):
         else:
             return 1  # A
 
-    @classmethod
-    def get_dealer_up_card_index(cls, card):
-        rank = card.rank
+    def _get_dealer_up_card_index(self):
+        rank = self.rank
         if rank in ['K', 'Q', 'J']:
             rank = 'T'
 
-        return Card.CARD_STRATEGY_RANK_LOOKUP[rank]
+        return self.CARD_STRATEGY_RANK_LOOKUP[rank]
 
 class Deck(object):
 
@@ -58,17 +63,24 @@ class Deck(object):
             for rank in Card.CARD_RANKS:
                 self.cards.append(Card(suit, rank))
 
-class Shoe(object):
+# Instead of creating all Deck and Card objects every time we need a shoe, this keeps master copies to copy and return.
+# Over thousands of hands this makes a significant difference in performance.
+class ShoeFactory(object):
 
-    # Inits a shuffled shoe with the given # of decks
     def __init__(self, num_decks):
-        self.cards = []
+        self._deck_cards_master = Deck().cards
+        self._shoe_cards_master = []
         for i in range(num_decks):
-            deck = Deck()
-            for card in deck.cards:
-                self.cards.append(card)
+            # Make a copy of the deck
+            deck = self._deck_cards_master[:]
+            for card in deck:
+                self._shoe_cards_master.append(card)
 
-        self.cards = self.shuffle(self.cards)
+    def get_shoe(self):
+        # Return a shuffled copy of the master shoe
+        new_shoe = self._shoe_cards_master[:]
+
+        return self.shuffle(new_shoe)
 
     # Fisher-Yates shuffle; implementation taken from here:
     # https://www.geeksforgeeks.org/shuffle-a-given-array-using-fisher-yates-shuffle-algorithm/
@@ -82,9 +94,6 @@ class Shoe(object):
             arr[i], arr[j] = arr[j], arr[i]
 
         return arr
-
-    def print_shoe(self):
-        print(' '.join(c.rank for c in self.cards))
 
 class BlackjackHandResult(Enum):
     UNDETERMINED = 0,
@@ -133,7 +142,7 @@ class BlackjackHand(object):
         self.soft_value = None
 
         for card in self.cards:
-            self.hard_value += card.value()
+            self.hard_value += card.value
 
             if card.rank == 'A':
                 self.contains_ace = True

@@ -207,13 +207,13 @@ class BustBonusPayer(BonusPayer):
 
         is_flush = self._is_flush(dealer_hand.cards)
 
-        if len(dealer_hand.cards) == 3 and dealer_hand.cards[0].value() == 8 and dealer_hand.cards[1].value() == 8 and dealer_hand.cards[2].value() == 8:
+        if len(dealer_hand.cards) == 3 and dealer_hand.cards[0].value == 8 and dealer_hand.cards[1].value == 8 and dealer_hand.cards[2].value == 8:
             # 888
             multiplier = 75 if is_flush else 25
         else:
             # just check up card
             payout_set = 'suited' if is_flush else 'non-suited'
-            multiplier = self.MX_LOOKUP[payout_set][dealer_hand.cards[0].value()]
+            multiplier = self.MX_LOOKUP[payout_set][dealer_hand.cards[0].value]
 
         return multiplier * bonus_bet
 

@@ -77,6 +77,8 @@ class Simulation(object):
             self.bonus_payer = TwentyOne3BonusPayer()
             self.bonus_bet_config = sim_config['bonus_bets']
 
+        self.shoe_factory = ShoeFactory(self.num_decks)
+
         self.shoe = []
         self.dealer_hand = None
         self.num_hands_played = 0
@@ -164,7 +166,7 @@ class Simulation(object):
 
     def new_shoe(self):
         self.num_shoes_used += 1
-        self.shoe = Shoe(self.num_decks).cards
+        self.shoe = self.shoe_factory.get_shoe()
         burn_card = self.get_next_card()
 
         self.log.debug(f'New shoe of {self.num_decks} decks, {len(self.shoe)} cards; burn card: {burn_card}')
@@ -196,7 +198,8 @@ class Simulation(object):
         self.deal_round_of_cards()
         self.deal_round_of_cards()
 
-        self.log_all_hands()
+        if self.verbose:
+            self.log_all_hands()
 
         dealer_up_card = self.dealer_hand.cards[0]
 
@@ -240,7 +243,8 @@ class Simulation(object):
                         dealer_has_bj=False
                     )
 
-        self.log_all_hands()
+        if self.verbose:
+            self.log_all_hands()
 
         # TODO: Pay bust bonus
 

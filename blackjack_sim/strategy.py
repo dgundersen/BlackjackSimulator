@@ -39,8 +39,16 @@ class Strategy(object):
 
     def determine_player_action(self, dealer_up_card, player_hand):
         num_cards = len(player_hand.cards)
+
+        # There will only be 1 card if we just split
+        if num_cards == 1:
+            return 'H'
+
+        # Return action of stand if we're at 21 or busted
+        if player_hand.hard_value >= 21:
+            return 'S'
+
         hand_cards = player_hand.get_hand_as_ranks()
-        dealer_up_card_idx = Card.get_dealer_up_card_index(dealer_up_card)
 
         action = None
         # Determine the player's first action for the hand
@@ -49,11 +57,11 @@ class Strategy(object):
             if player_hand.is_blackjack:
                 action = 'S'
             elif player_hand.player.allowed_to_split and hand_cards in self.pairs.keys():
-                action = self.pairs[hand_cards][dealer_up_card_idx]
+                action = self.pairs[hand_cards][dealer_up_card.dealer_up_card_index]
             elif hand_cards in self.soft_hands.keys():
-                action = self.soft_hands[hand_cards][dealer_up_card_idx]
+                action = self.soft_hands[hand_cards][dealer_up_card.dealer_up_card_index]
             elif player_hand.hard_value in self.hard_totals.keys():
-                action = self.hard_totals[player_hand.hard_value][dealer_up_card_idx]
+                action = self.hard_totals[player_hand.hard_value][dealer_up_card.dealer_up_card_index]
 
         # Determine the player's action after initially hitting
         # Stand on soft 19 or greater, otherwise follow hard totals strategy and either hit or stand
@@ -62,18 +70,10 @@ class Strategy(object):
             if player_hand.soft_value and player_hand.soft_value >= 19:
                 return 'S'
             elif player_hand.hard_value in self.hard_totals.keys():
-                action = self.hard_totals[player_hand.hard_value][dealer_up_card_idx]
+                action = self.hard_totals[player_hand.hard_value][dealer_up_card.dealer_up_card_index]
 
                 if action == 'D':
                     action = 'H'
-
-        # There will only be 1 card if we just split
-        elif num_cards == 1:
-            return 'H'
-
-            # Return action of stand if we're at 21 or busted
-        if player_hand.hard_value >= 21:
-            action = 'S'
 
         if not action:
             raise DetermineActionError(f'Unable to determine player action for hand: {hand_cards}')
