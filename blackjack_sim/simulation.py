@@ -71,11 +71,17 @@ class Simulation(object):
 
         # Bonus bets are really more strategy but putting it in sim config makes it easier
         # to compare simulations of playing vs not playing bonus bets.
-        self.bonus_payer = None
+        self.bonus_payer_21_3 = None
+        self.bonus_payer_bust = None
         self.bonus_bet_config = None
         if 'bonus_bets' in sim_config:
-            self.bonus_payer = TwentyOne3BonusPayer()
             self.bonus_bet_config = sim_config['bonus_bets']
+
+            if '21_3' in sim_config['bonus_bets']:
+                self.bonus_payer_21_3 = TwentyOne3BonusPayer()
+
+            if 'bust' in sim_config['bonus_bets']:
+                self.bonus_payer_bust = BustBonusPayer()
 
         self.shoe_factory = ShoeFactory(self.num_decks)
 
@@ -211,7 +217,7 @@ class Simulation(object):
 
                 # Pay 3 card bonus if configured
                 if player.will_play_21_3_bonus():
-                    bonus_payout = self.bonus_payer.get_payout(
+                    bonus_payout = self.bonus_payer_21_3.get_payout(
                         dealer_up_card=dealer_up_card,
                         player_hand=player_hand,
                         bonus_bet=player.bonus_plan_21_3.amount

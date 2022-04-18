@@ -203,9 +203,9 @@ class BlackjackPlayer(object):
 
         self.hands = []  # list of BlackjackHand objects; will be multiple when we split
 
-        self.bonus_plan_21_3 = None
-        if bonus_config and '21_3' in bonus_config:
-            self.bonus_plan_21_3 = BonusPlan(bonus_config['21_3'])
+        self.bonus_plan_21_3 = BonusPlan(bonus_config['21_3']) if bonus_config and '21_3' in bonus_config else None
+        self.bonus_plan_bust = BonusPlan(bonus_config['bust']) if bonus_config and 'bust' in bonus_config else None
+
 
     def reset_hands(self):
         self.hands = []
