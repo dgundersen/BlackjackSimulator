@@ -133,7 +133,7 @@ class TestBonusPayouts(unittest.TestCase):
     def test_bust_bonus_payout(self, hand_str, suited, expected_mx):
         bonus_payer = BustBonusPayer()
 
-        dealer_hand = TestConfig.get_blackjack_hand(ranks_str=hand_str, suited=suited)
+        dealer_hand = TestConfig.get_blackjack_hand(ranks_str=hand_str, suited=suited, is_dealer_hand=True)
 
         bonus_bet = 25
 

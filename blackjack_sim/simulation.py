@@ -230,7 +230,7 @@ class Simulation(object):
             for player_hand in starting_hands:
                 self.evaluate_hand_result(
                     player_hand=player_hand,
-                    dealer_has_bj=True
+                    dealer_hand=self.dealer_hand
                 )
 
         else:
@@ -246,13 +246,20 @@ class Simulation(object):
                 for player_hand in player.hands:
                     self.evaluate_hand_result(
                         player_hand=player_hand,
-                        dealer_has_bj=False
+                        dealer_hand=self.dealer_hand
                     )
+
+                # Pay bust bonus if configured
+                if player.will_play_bust_bonus(dealer_up_card=dealer_up_card):
+                    bonus_payout = self.bonus_payer_bust.get_payout(
+                        dealer_hand=self.dealer_hand,
+                        bonus_bet=player.bonus_plan_bust.amount
+                    )
+
+                    player.record_bust_bonus_result(payout=bonus_payout)
 
         if self.verbose:
             self.log_all_hands()
-
-        # TODO: Pay bust bonus
 
 
     def deal_round_of_cards(self):
@@ -321,8 +328,8 @@ class Simulation(object):
             self.play_player_hand(dealer_up_card=dealer_up_card, player_hand=player_hand)
             self.play_player_hand(dealer_up_card=dealer_up_card, player_hand=new_hand)
 
-    def evaluate_hand_result(self, player_hand, dealer_has_bj):
-        if dealer_has_bj:
+    def evaluate_hand_result(self, player_hand, dealer_hand):
+        if dealer_hand.is_blackjack:
             if player_hand.is_blackjack:
                 player_hand.result = BlackjackHandResult.PUSH
             else:
@@ -333,7 +340,7 @@ class Simulation(object):
         else:
             if player_hand.result == BlackjackHandResult.UNDETERMINED:
                 player_hand_value = player_hand.get_ultimate_value()
-                dealer_hand_value = self.dealer_hand.get_ultimate_value()
+                dealer_hand_value = dealer_hand.get_ultimate_value()
 
                 if self.dealer_hand.hard_value > 21:
                     player_hand.result = BlackjackHandResult.WIN

@@ -3,6 +3,22 @@ from blackjack_sim.errors import *
 
 class BonusPlan(object):
 
+    CARD_LOOKUP = {
+        '2': False,
+        '3': False,
+        '4': False,
+        '5': False,
+        '6': False,
+        '7': False,
+        '8': False,
+        '9': False,
+        'T': False,
+        'J': False,
+        'Q': False,
+        'K': False,
+        'A': False
+    }
+
     def __init__(self, bonus_config):
         self.name = bonus_config['name']
         self.frequency = bonus_config['frequency']
@@ -13,8 +29,37 @@ class BonusPlan(object):
         self.num_losses = 0
         self.net_amount = 0
 
-    def will_play_bonus_bet(self):
-        return self.frequency == 'always'
+        if self.frequency == 'low':
+            self.CARD_LOOKUP['2'] = True
+            self.CARD_LOOKUP['3'] = True
+            self.CARD_LOOKUP['4'] = True
+            self.CARD_LOOKUP['5'] = True
+            self.CARD_LOOKUP['6'] = True
+        elif self.frequency == 'low+ace':
+            self.CARD_LOOKUP['2'] = True
+            self.CARD_LOOKUP['3'] = True
+            self.CARD_LOOKUP['4'] = True
+            self.CARD_LOOKUP['5'] = True
+            self.CARD_LOOKUP['6'] = True
+            self.CARD_LOOKUP['A'] = True
+
+    """
+        Frequency options:
+        21+3: always
+        bust: always, low, low+ace
+        
+        low = 2 - 6
+        low+ace = 2 - 6, A
+    """
+    def will_play_bonus_bet(self, dealer_up_card=None):
+        if self.frequency == 'always':
+            return True
+        elif self.frequency == 'low' and dealer_up_card:
+            return self.CARD_LOOKUP[dealer_up_card.rank]
+        elif self.frequency == 'low+ace' and dealer_up_card:
+            return self.CARD_LOOKUP[dealer_up_card.rank]
+        else:
+            return False
 
     def record_bonus_result(self, payout):
         self.num_times_played += 1
@@ -61,7 +106,7 @@ class BonusPayer(object):
         'T': 9,
         'J': 10,
         'Q': 11,
-        'K': 12,
+        'K': 12
     }
 
     ACE_HIGH_RANK_LOOKUP = {
@@ -205,15 +250,17 @@ class BustBonusPayer(BonusPayer):
     def get_payout(self, dealer_hand, bonus_bet):
         multiplier = 0
 
-        is_flush = self._is_flush(dealer_hand.cards)
+        if dealer_hand.is_dealer_hand and dealer_hand.hard_value > 21:
 
-        if len(dealer_hand.cards) == 3 and dealer_hand.cards[0].value == 8 and dealer_hand.cards[1].value == 8 and dealer_hand.cards[2].value == 8:
-            # 888
-            multiplier = 75 if is_flush else 25
-        else:
-            # just check up card
-            payout_set = 'suited' if is_flush else 'non-suited'
-            multiplier = self.MX_LOOKUP[payout_set][dealer_hand.cards[0].value]
+            is_flush = self._is_flush(dealer_hand.cards)
+
+            if len(dealer_hand.cards) == 3 and dealer_hand.cards[0].value == 8 and dealer_hand.cards[1].value == 8 and dealer_hand.cards[2].value == 8:
+                # 888
+                multiplier = 75 if is_flush else 25
+            else:
+                # just check up card
+                payout_set = 'suited' if is_flush else 'non-suited'
+                multiplier = self.MX_LOOKUP[payout_set][dealer_hand.cards[0].value]
 
         return multiplier * bonus_bet
 
