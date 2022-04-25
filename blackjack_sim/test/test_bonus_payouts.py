@@ -5,7 +5,6 @@ from test_config import TestConfig
 from blackjack_sim.bonuses import BonusPayer
 
 
-
 class TestBonusPayouts(unittest.TestCase):
 
     @sub_test([

@@ -3,65 +3,51 @@ from blackjack_sim.errors import *
 
 class BonusPlan(object):
 
-    CARD_LOOKUP = {
-        '2': False,
-        '3': False,
-        '4': False,
-        '5': False,
-        '6': False,
-        '7': False,
-        '8': False,
-        '9': False,
-        'T': False,
-        'J': False,
-        'Q': False,
-        'K': False,
-        'A': False
-    }
-
     def __init__(self, bonus_config):
         self.name = bonus_config['name']
         self.frequency = bonus_config['frequency']
-        self.amount = int(bonus_config['amount'])
+        self._amount = int(bonus_config['amount']) if 'amount' in bonus_config else None
+
+        # Dictionary of bet amount based on card lookup; 0 means no bet
+        self.dealer_up_card_lookup = bonus_config['dealer_up_card_lookup'] if 'dealer_up_card_lookup' in bonus_config else None
 
         self.num_times_played = 0
         self.num_wins = 0
         self.num_losses = 0
         self.net_amount = 0
 
-        if self.frequency == 'low':
-            self.CARD_LOOKUP['2'] = True
-            self.CARD_LOOKUP['3'] = True
-            self.CARD_LOOKUP['4'] = True
-            self.CARD_LOOKUP['5'] = True
-            self.CARD_LOOKUP['6'] = True
-        elif self.frequency == 'low+ace':
-            self.CARD_LOOKUP['2'] = True
-            self.CARD_LOOKUP['3'] = True
-            self.CARD_LOOKUP['4'] = True
-            self.CARD_LOOKUP['5'] = True
-            self.CARD_LOOKUP['6'] = True
-            self.CARD_LOOKUP['A'] = True
-
     """
         Frequency options:
         21+3: always
-        bust: always, low, low+ace
-        
-        low = 2 - 6
-        low+ace = 2 - 6, A
+        bust: dealer_up_card_lookup
     """
     def will_play_bonus_bet(self, dealer_up_card=None):
         if self.frequency == 'always':
             return True
-        elif self.frequency == 'low' and dealer_up_card:
-            return self.CARD_LOOKUP[dealer_up_card.rank]
-        elif self.frequency == 'low+ace' and dealer_up_card:
-            return self.CARD_LOOKUP[dealer_up_card.rank]
+        elif self.frequency == 'dealer_up_card_lookup' and dealer_up_card:
+            return self.dealer_up_card_lookup[dealer_up_card.rank] > 0
         else:
             return False
 
-    def record_bonus_result(self, payout):
+    def get_bet_amount(self, dealer_up_card=None):
+        if self._amount:
+            return self._amount
+        elif self.dealer_up_card_lookup and dealer_up_card:
+            return self.dealer_up_card_lookup[dealer_up_card.rank]
+
+    def get_avg_bet_amount(self):
+        if self._amount:
+            return self._amount
+        elif self.dealer_up_card_lookup:
+            total = 0
+            num_valid_bets = 0
+            for bet in self.dealer_up_card_lookup.values():
+                if bet:
+                    total += bet
+                    num_valid_bets +=1
+            return total / num_valid_bets
+
+    def record_bonus_result(self, payout, bet_amount):
         self.num_times_played += 1
 
         if payout:
@@ -71,16 +57,17 @@ class BonusPlan(object):
         else:
             # loss
             self.num_losses += 1
-            self.net_amount -= self.amount
+            self.net_amount -= bet_amount
 
     def get_result_str(self):
         pct_win = (self.num_wins / self.num_times_played) * 100 if self.num_times_played > 0 else 0
         pct_loss = (self.num_losses / self.num_times_played) * 100 if self.num_times_played > 0 else 0
 
         net_change_per_hand = self.net_amount / self.num_times_played if self.num_times_played > 0 else 0
-        edge = -((net_change_per_hand / self.amount) * 100) if self.amount > 0 else 0
+        avg_bet_amt = self.get_avg_bet_amount()
+        edge = -((net_change_per_hand / avg_bet_amt) * 100) if avg_bet_amt > 0 else 0
 
-        return f'{self.name}: Played={self.num_times_played}, Wins={self.num_wins} ({round(pct_win, 1)}%), Losses={self.num_losses} ({round(pct_loss, 1)}%), ' \
+        return f'{self.name}: Played={self.num_times_played}, Avg Bet: ${round(avg_bet_amt, 2)}, Wins={self.num_wins} ({round(pct_win, 1)}%), Losses={self.num_losses} ({round(pct_loss, 1)}%), ' \
                + f'Net: ${self.net_amount}, House Edge: {round(edge, 2)}%'
 
 

@@ -220,7 +220,7 @@ class Simulation(object):
                     bonus_payout = self.bonus_payer_21_3.get_payout(
                         dealer_up_card=dealer_up_card,
                         player_hand=player_hand,
-                        bonus_bet=player.bonus_plan_21_3.amount
+                        bonus_bet=player.bonus_plan_21_3.get_bet_amount()
                     )
 
                     player.record_21_3_bonus_result(payout=bonus_payout)
@@ -253,10 +253,10 @@ class Simulation(object):
                 if player.will_play_bust_bonus(dealer_up_card=dealer_up_card):
                     bonus_payout = self.bonus_payer_bust.get_payout(
                         dealer_hand=self.dealer_hand,
-                        bonus_bet=player.bonus_plan_bust.amount
+                        bonus_bet=player.bonus_plan_bust.get_bet_amount(dealer_up_card=dealer_up_card)
                     )
 
-                    player.record_bust_bonus_result(payout=bonus_payout)
+                    player.record_bust_bonus_result(payout=bonus_payout, dealer_up_card=dealer_up_card)
 
         if self.verbose:
             self.log_all_hands()

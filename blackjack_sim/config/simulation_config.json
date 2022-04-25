@@ -30,8 +30,22 @@
       },
       "bust": {
         "name": "Bust Bonus",
-        "frequency": "always",
-        "amount": 5
+        "frequency": "dealer_up_card_lookup",
+        "dealer_up_card_lookup": {
+          "2": 5,
+          "3": 5,
+          "4": 5,
+          "5": 5,
+          "6": 5,
+          "7": 0,
+          "8": 0,
+          "9": 0,
+          "T": 0,
+          "J": 0,
+          "Q": 0,
+          "K": 0,
+          "A": 0
+        }
       }
     }
   }

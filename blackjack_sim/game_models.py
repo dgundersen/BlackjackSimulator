@@ -223,24 +223,28 @@ class BlackjackPlayer(object):
         return True if self.bonus_plan_bust and self.bonus_plan_bust.will_play_bonus_bet(dealer_up_card=dealer_up_card) else False
 
     def record_21_3_bonus_result(self, payout):
-        self.bonus_plan_21_3.record_bonus_result(payout=payout)
+        bet_amt = self.bonus_plan_21_3.get_bet_amount()
+
+        self.bonus_plan_21_3.record_bonus_result(payout=payout, bet_amount=bet_amt)
 
         if payout:
             # win
             self.chip_stack += payout
         else:
             # loss
-            self.chip_stack -= self.bonus_plan_21_3.amount
+            self.chip_stack -= bet_amt
 
-    def record_bust_bonus_result(self, payout):
-        self.bonus_plan_bust.record_bonus_result(payout=payout)
+    def record_bust_bonus_result(self, payout, dealer_up_card):
+        bet_amt = self.bonus_plan_bust.get_bet_amount(dealer_up_card=dealer_up_card)
+
+        self.bonus_plan_bust.record_bonus_result(payout=payout, bet_amount=bet_amt)
 
         if payout:
             # win
             self.chip_stack += payout
         else:
             # loss
-            self.chip_stack -= self.bonus_plan_bust.amount
+            self.chip_stack -= bet_amt
 
     def record_hand_result(self, bj_hand):
         self.num_hands_played += 1
