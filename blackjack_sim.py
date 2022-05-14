@@ -1,3 +1,4 @@
+import sys
 import logging
 from blackjack_sim.simulation import SimulationManager
 from blackjack_sim.utils import Utils
@@ -7,7 +8,7 @@ def run_simulation():
 
     log.info('Running BlackjackSimulator')
 
-    sim_mgr = SimulationManager()
+    sim_mgr = SimulationManager(sim_config_file_path=sys.argv[1] if len(sys.argv) > 1 else None)
 
     sim_mgr.run_simulations()
 

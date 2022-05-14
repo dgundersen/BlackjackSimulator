@@ -1,6 +1,6 @@
 [
   {
-    "name": "Simulation #1 - Two Decks",
+    "name": "Test Simulation #1 - Two Decks",
     "num_decks": 2,
     "num_players": 3,
     "num_sessions": 1,
@@ -12,11 +12,11 @@
     "verbose": 1
   },
   {
-    "name": "Simulation #2 - Six Decks",
+    "name": "Test Simulation #2 - Six Decks",
     "num_decks": 6,
     "num_players": 3,
     "num_sessions": 1,
-    "max_session_hands": 50000,
+    "max_session_hands": 20000,
     "min_bet": 15,
     "buyin_num_bets": 20,
     "split_limit": 4,

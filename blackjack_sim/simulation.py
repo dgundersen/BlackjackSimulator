@@ -9,13 +9,15 @@ from blackjack_sim.bonuses import *
 
 class SimulationManager(object):
 
-    def __init__(self):
+    DEFAULT_SIM_CONFIG_FILE_PATH = 'blackjack_sim/config/simulation_config.json'
+
+    def __init__(self, sim_config_file_path=None):
         self.simulations = []
 
         self.log = Utils.get_logger('SimulationManager', logging.INFO)
 
         # load main config file; contains 1 or more simulations
-        sim_config_list = self.load_json_file('blackjack_sim/config/simulation_config.json')
+        sim_config_list = self.load_json_file(sim_config_file_path if sim_config_file_path else self.DEFAULT_SIM_CONFIG_FILE_PATH)
 
         if sim_config_list:
             for sim_config in sim_config_list:
